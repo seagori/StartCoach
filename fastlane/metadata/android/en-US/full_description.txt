@@ -1,0 +1,19 @@
+One Step helps you begin when a goal feels too big.
+
+Type a short goal such as "exercise" or "reading". The app suggests a few small actions you can do right now, then helps you check in and adjust the difficulty.
+
+Features
+* Instant suggestions from an AI model you configure
+* Learning paths built from your own Markdown materials
+* Self check-ins with attempts, minutes, and difficulty
+* Progress summaries for the last two weeks
+* Encrypted backup and restore
+* Direct P2P sync between the Windows app and Android on the same Wi-Fi
+
+Privacy
+* No account and no analytics
+* Records are stored only on your device
+* API keys are kept in Android encrypted storage
+* AI requests go only to the endpoint you configure
+
+One Step is free software under the GNU GPL v3 or later.

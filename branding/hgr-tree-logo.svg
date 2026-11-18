@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <rect style="fill:#eeeeee;fill-opacity:1;stroke:none" width="512" height="512" x="672.34412" y="-5.7946" ry="48.850235" />
+    <circle style="fill:#e65d5d;fill-opacity:1;stroke:none" cx="1068.1781" cy="407.68936" r="62.161407" />
+    <path style="fill:#4b9750;fill-opacity:1;stroke:none" d="m 941.71659,44.949999 a 100.41372,100.41372 0 0 0 -42.07,9.237801 105.69866,105.69866 0 0 0 -25.55628,-3.135731 105.69866,105.69866 0 0 0 -104.68804,91.117161 105.69866,105.69866 0 0 0 -65.26919,97.66149 105.69866,105.69866 0 0 0 105.69957,105.69721 105.69866,105.69866 0 0 0 43.30499,-9.31073 105.69866,105.69866 0 0 0 43.01566,9.31073 105.69866,105.69866 0 0 0 56.57948,-16.41727 105.69866,105.69866 0 0 0 20.34576,1.97599 A 105.69866,105.69866 0 0 0 1078.7758,225.38709 105.69866,105.69866 0 0 0 1042.1304,145.36376 100.41372,100.41372 0 0 0 941.71659,44.949999 Z" />
+    <path style="fill:#954d4d;fill-opacity:1;stroke:none" d="m 933.14685,244.4108 a 105.69866,105.69866 0 0 1 -59.05654,18.03806 105.69866,105.69866 0 0 1 -21.09851,-2.12655 v 196.16276 c 0,9.49025 7.6398,17.13004 17.13005,17.13004 h 47.05939 c 9.49024,0 17.13004,-7.63979 17.13004,-17.13004 V 250.65638 c 0,-2.20575 -0.41168,-4.31242 -1.16443,-6.24558 z" />
+    <rect style="fill:#4b9750;fill-opacity:1;stroke:none" width="512" height="512" x="0" y="0" ry="100.67787" />
+    <ellipse style="fill:#e65d5d;fill-opacity:1;stroke:#ffffff;stroke-width:69.8877;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke" cx="261.41025" cy="268.55743" rx="168.4725" ry="168.51492" />
+    <path style="fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:56.6929;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke" d="M 256,218 V 37.754204" />
+  </g>
+</svg>

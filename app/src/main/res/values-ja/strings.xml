@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">一歩</string>
+    <string name="widget_description">直近の目標の次の小さな行動を表示し、ワンタップで開始します</string>
+    <string name="quick_tile_label">クイック開始</string>
+</resources>

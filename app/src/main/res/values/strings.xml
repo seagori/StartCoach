@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">One Step</string>
+    <string name="widget_description">Shows your next small action and starts in one tap</string>
+    <string name="quick_tile_label">Quick Start</string>
+</resources>

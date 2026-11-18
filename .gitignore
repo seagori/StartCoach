@@ -1,0 +1,76 @@
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+**/build/
+out/
+*.hprof
+*.log
+
+# Android
+local.properties
+/captures/
+**/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+app/release/
+app/debug/
+
+# Desktop (Compose)
+*.msi
+*.exe
+*.dmg
+*.deb
+*.rpm
+*.pkg
+*.AppImage
+
+# IDE
+.idea/
+.fleet/
+.vscode/
+*.iml
+
+# Local config / secrets
+*.local
+.env
+.env.*
+secrets.properties
+keystore.properties
+signing.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# F-Droid / Fastlane transient outputs (keep fastlane/metadata/ and fdroid/)
+fdroid/tmp/
+fdroid/build/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Local docs / planning
+local_docs/
+
+# Local outputs / script artifacts
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+*.scbackup
+*.zip

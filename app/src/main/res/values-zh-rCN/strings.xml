@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">一小步</string>
+    <string name="widget_description">显示当前目标的下一步小行动，点击即可立即开始</string>
+    <string name="quick_tile_label">快速开始</string>
+</resources>

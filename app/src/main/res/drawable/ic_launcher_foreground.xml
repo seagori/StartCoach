@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="20.717"
+        android:translateY="19.804"
+        android:scaleX="0.12734"
+        android:scaleY="0.12734">
+        <!-- 흰색 테두리: 원본 타원의 중심선보다 절반 굵기만큼 바깥까지 채운다. -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M261.41,268.56m-203.43,0a203.43,203.43 0,1 1,406.86 0a203.43,203.43 0,1 1,-406.86 0" />
+        <path
+            android:fillColor="#E65D5D"
+            android:pathData="M261.41,268.56m-133.53,0a133.53,133.53 0,1 1,267.06 0a133.53,133.53 0,1 1,-267.06 0" />
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="56.6929"
+            android:strokeLineCap="round"
+            android:pathData="M256,218L256,37.754" />
+    </group>
+</vector>
