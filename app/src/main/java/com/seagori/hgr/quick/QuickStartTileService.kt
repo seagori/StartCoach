@@ -31,6 +31,7 @@ class QuickStartTileService : TileService() {
         super.onStartListening()
         val tile = qsTile ?: return
         tile.state = Tile.STATE_ACTIVE
+        tile.icon = Icon.createWithResource(this, R.drawable.ic_quick_tile)
         tile.label = getString(R.string.quick_tile_label)
         tile.updateTile()
 
@@ -106,7 +107,7 @@ class QuickStartTileService : TileService() {
             manager.requestAddTileService(
                 component,
                 context.getString(R.string.quick_tile_label),
-                Icon.createWithResource(context, R.mipmap.ic_launcher),
+                Icon.createWithResource(context, R.drawable.ic_quick_tile),
                 context.mainExecutor
             ) {}
         }
