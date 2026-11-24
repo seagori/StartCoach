@@ -156,19 +156,19 @@ class PortableBackupTest {
 
             syncFromB(now + 10)
 
-            assertEquals("https://coach.example.com/v1", settingsA.apiBaseUrl(com.seagori.hgr.domain.LlmProfile.COACH))
+            // 엔드포인트와 API 키는 동기화되지 않으므로 A의 로컬 값이 그대로 유지된다.
+            assertEquals("", settingsA.apiBaseUrl(com.seagori.hgr.domain.LlmProfile.COACH))
             assertEquals("coach-model-b", settingsA.modelId(com.seagori.hgr.domain.LlmProfile.COACH))
             assertEquals(AppLanguage.ENGLISH, settingsA.appLanguage)
-            // 최신 쪽(B)의 키가 반영된다.
-            assertEquals("token-b", settingsA.token(com.seagori.hgr.domain.LlmProfile.FAST))
+            assertEquals("token-a", settingsA.token(com.seagori.hgr.domain.LlmProfile.FAST))
 
-            // B에서 키를 지우고 다른 값을 바꿔도 A의 키는 사라지지 않는다.
+            // B에서 키를 지우고 다른 값을 바꿔도 A의 키는 사라지지 않고 모델 ID만 동기화된다.
             settingsB.setToken(com.seagori.hgr.domain.LlmProfile.FAST, "")
             settingsB.setModelId(com.seagori.hgr.domain.LlmProfile.COACH, "coach-model-b2")
             val export2 = clientController.collectLocalChanges(clientState.index, now + 20)
             serverState = serverController.applyServerRemote(serverState, export2.records, now + 20)
             assertEquals("coach-model-b2", settingsA.modelId(com.seagori.hgr.domain.LlmProfile.COACH))
-            assertEquals("token-b", settingsA.token(com.seagori.hgr.domain.LlmProfile.FAST))
+            assertEquals("token-a", settingsA.token(com.seagori.hgr.domain.LlmProfile.FAST))
         } finally {
             runCatching { root.removeNode() }
         }

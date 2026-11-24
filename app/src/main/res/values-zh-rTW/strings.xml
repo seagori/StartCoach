@@ -1,5 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">一小步</string>
     <string name="widget_description">顯示目前目標的下一步小行動，點擊即可立即開始</string>
-    <string name="quick_tile_label">快速開始</string>
 </resources>

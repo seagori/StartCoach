@@ -53,10 +53,19 @@ fun RecordsScreen(viewModel: RecordsViewModel, onOpenArchive: () -> Unit = {}) {
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 28.dp)
     ) {
         item(key = "header") {
-            ScreenHeader(title = strings.recordsTitle, subtitle = strings.recordsSubtitle)
-            Spacer(Modifier.height(12.dp))
-            com.seagori.hgr.ui.components.SecondaryButton(strings.openArchive, onClick = onOpenArchive)
-            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ScreenHeader(title = strings.recordsTitle, subtitle = strings.recordsSubtitle)
+                }
+                TextButton(onClick = onOpenArchive) {
+                    Text(strings.openArchive, color = Accent, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
             ActivitySection(ui.activity)
             Spacer(Modifier.height(16.dp))
             Column(
@@ -64,26 +73,25 @@ fun RecordsScreen(viewModel: RecordsViewModel, onOpenArchive: () -> Unit = {}) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
                     .background(Insight)
-                    .padding(18.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(strings.growth, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Ink)
-                Spacer(Modifier.height(10.dp))
                 if (ui.totalSteps > 0) {
                     Text(
                         strings.stepProgress(ui.completedSteps, ui.totalSteps),
                         color = Accent,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(4.dp))
                 }
-                Text(strings.firstAttempts(ui.stats.firstAttempts), color = Ink, fontSize = 15.sp)
-                Text(strings.startSuccessRate((ui.stats.startSuccessRate * 100).toInt()), color = Ink, fontSize = 15.sp)
-                Text(strings.actualVolume(ui.stats.actualVolume, ui.stats.estimatedVolume), color = Ink, fontSize = 15.sp)
+                Text(strings.firstAttempts(ui.stats.firstAttempts), color = Ink, fontSize = 14.sp)
+                Text(strings.startSuccessRate((ui.stats.startSuccessRate * 100).toInt()), color = Ink, fontSize = 14.sp)
+                Text(strings.actualVolume(ui.stats.actualVolume, ui.stats.estimatedVolume), color = Ink, fontSize = 14.sp)
                 Text(
                     strings.difficultyTrend(ui.stats.difficultyTrend),
                     color = Ink,
-                    fontSize = 15.sp
+                    fontSize = 14.sp
                 )
             }
         }

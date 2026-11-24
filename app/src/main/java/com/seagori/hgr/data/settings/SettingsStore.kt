@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.seagori.hgr.domain.LlmProfile
 import com.seagori.hgr.i18n.AppLanguage
+import com.seagori.hgr.ui.theme.AppThemePreset
 
 /** 동기화/백업에 쓰는 설정 값 묶음. 토큰은 SecureTokenStore가 따로 보관한다. */
 data class SettingsSnapshot(
@@ -112,6 +113,58 @@ class SettingsStore(context: Context) {
         LlmProfile.COACH -> KEY_COACH_MODEL
     }
 
+    var reminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REMINDER_ENABLED, false)
+        set(value) = editPrefs { putBoolean(KEY_REMINDER_ENABLED, value) }
+
+    var reminderCooldownMinutes: Int
+        get() = prefs.getInt(KEY_REMINDER_COOLDOWN_MINUTES, DEFAULT_REMINDER_COOLDOWN_MINUTES)
+        set(value) = editPrefs { putInt(KEY_REMINDER_COOLDOWN_MINUTES, value.coerceAtLeast(1)) }
+
+    var reminderRetryMinutes: Int
+        get() = prefs.getInt(KEY_REMINDER_RETRY_MINUTES, DEFAULT_REMINDER_RETRY_MINUTES)
+        set(value) = editPrefs { putInt(KEY_REMINDER_RETRY_MINUTES, value.coerceAtLeast(1)) }
+
+    var reminderDurationSeconds: Int
+        get() = prefs.getInt(KEY_REMINDER_DURATION_SECONDS, DEFAULT_REMINDER_DURATION_SECONDS)
+        set(value) = editPrefs { putInt(KEY_REMINDER_DURATION_SECONDS, value.coerceAtLeast(1)) }
+
+    var reminderMessage: String
+        get() = prefs.getString(KEY_REMINDER_MESSAGE, "").orEmpty()
+        set(value) = editPrefs { putString(KEY_REMINDER_MESSAGE, value) }
+
+    var lastReminderAt: Long
+        get() = prefs.getLong(KEY_LAST_REMINDER_AT, 0L)
+        set(value) = editPrefs { putLong(KEY_LAST_REMINDER_AT, value) }
+
+    var dailyReminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DAILY_REMINDER_ENABLED, false)
+        set(value) = editPrefs { putBoolean(KEY_DAILY_REMINDER_ENABLED, value) }
+
+    var dailyReminderCooldownMinutes: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_COOLDOWN_MINUTES, DEFAULT_REMINDER_COOLDOWN_MINUTES)
+        set(value) = editPrefs { putInt(KEY_DAILY_REMINDER_COOLDOWN_MINUTES, value.coerceAtLeast(1)) }
+
+    var dailyReminderRetryMinutes: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_RETRY_MINUTES, DEFAULT_REMINDER_RETRY_MINUTES)
+        set(value) = editPrefs { putInt(KEY_DAILY_REMINDER_RETRY_MINUTES, value.coerceAtLeast(1)) }
+
+    var dailyReminderDurationSeconds: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_DURATION_SECONDS, DEFAULT_REMINDER_DURATION_SECONDS)
+        set(value) = editPrefs { putInt(KEY_DAILY_REMINDER_DURATION_SECONDS, value.coerceAtLeast(1)) }
+
+    var lastDailyReminderAt: Long
+        get() = prefs.getLong(KEY_LAST_DAILY_REMINDER_AT, 0L)
+        set(value) = editPrefs { putLong(KEY_LAST_DAILY_REMINDER_AT, value) }
+
+    var pinnedDailyNotificationEnabled: Boolean
+        get() = prefs.getBoolean(KEY_PINNED_DAILY_NOTIFICATION, false)
+        set(value) = editPrefs { putBoolean(KEY_PINNED_DAILY_NOTIFICATION, value) }
+
+    var appTheme: AppThemePreset
+        get() = AppThemePreset.fromStored(prefs.getString(KEY_APP_THEME, null))
+        set(value) = editPrefs { putString(KEY_APP_THEME, value.name) }
+
     /** 사용자가 값을 바꾼 경우. LWW 타임스탬프를 함께 올린다. */
     private fun editSettings(block: SharedPreferences.Editor.() -> Unit) {
         editPrefs {
@@ -126,6 +179,9 @@ class SettingsStore(context: Context) {
 
     companion object {
         const val DEFAULT_REASONING = "medium"
+        const val DEFAULT_REMINDER_COOLDOWN_MINUTES = 60
+        const val DEFAULT_REMINDER_RETRY_MINUTES = 15
+        const val DEFAULT_REMINDER_DURATION_SECONDS = 5
 
         private const val KEY_FAST_API = "fast_api_base_url"
         private const val KEY_FAST_MODEL = "fast_model_id"
@@ -134,6 +190,19 @@ class SettingsStore(context: Context) {
         private const val KEY_COACH_REASONING = "coach_reasoning_effort"
         private const val KEY_LANGUAGE = "app_language"
         private const val KEY_SETTINGS_UPDATED_AT = "settings_updated_at"
+        private const val KEY_REMINDER_ENABLED = "reminder_enabled"
+        private const val KEY_REMINDER_COOLDOWN_MINUTES = "reminder_cooldown_minutes"
+        private const val KEY_REMINDER_RETRY_MINUTES = "reminder_retry_minutes"
+        private const val KEY_REMINDER_DURATION_SECONDS = "reminder_duration_seconds"
+        private const val KEY_REMINDER_MESSAGE = "reminder_message"
+        private const val KEY_LAST_REMINDER_AT = "last_reminder_at"
+        private const val KEY_DAILY_REMINDER_ENABLED = "daily_reminder_enabled"
+        private const val KEY_DAILY_REMINDER_COOLDOWN_MINUTES = "daily_reminder_cooldown_minutes"
+        private const val KEY_DAILY_REMINDER_RETRY_MINUTES = "daily_reminder_retry_minutes"
+        private const val KEY_DAILY_REMINDER_DURATION_SECONDS = "daily_reminder_duration_seconds"
+        private const val KEY_LAST_DAILY_REMINDER_AT = "last_daily_reminder_at"
+        private const val KEY_PINNED_DAILY_NOTIFICATION = "pinned_daily_notification_enabled"
+        private const val KEY_APP_THEME = "app_theme"
 
         // v0.2 단일 프로필 키 (마이그레이션 전용)
         private const val KEY_LEGACY_API = "api_base_url"

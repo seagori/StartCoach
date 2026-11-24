@@ -8,4 +8,5 @@
     <exclude domain="sharedpref" path="startcoach_sync.xml" />
     <exclude domain="sharedpref" path="startcoach_sync_secure.xml" />
     <exclude domain="sharedpref" path="startcoach_suggestion_cache.xml" />
+    <exclude domain="sharedpref" path="startcoach_daily_tasks.xml" />
 </full-backup-content>

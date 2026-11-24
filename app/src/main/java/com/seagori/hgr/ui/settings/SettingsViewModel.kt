@@ -1,17 +1,25 @@
 package com.seagori.hgr.ui.settings
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.seagori.hgr.data.repository.CoachRepository
 import com.seagori.hgr.data.repository.LlmProfileUi
 import com.seagori.hgr.data.repository.LlmSettingsUi
+import com.seagori.hgr.data.settings.SettingsStore
 import com.seagori.hgr.domain.LlmProfile
 import com.seagori.hgr.domain.UrlRules
 import com.seagori.hgr.domain.toUserMessage
 import com.seagori.hgr.i18n.AppLanguage
 import com.seagori.hgr.i18n.AppLocale
+import com.seagori.hgr.reminder.DailyProgressNotification
+import com.seagori.hgr.reminder.ReminderManager
 import com.seagori.hgr.sync.AndroidSyncManager
+import com.seagori.hgr.ui.theme.AppTheme
+import com.seagori.hgr.ui.theme.AppThemePreset
+import com.seagori.hgr.widget.DailyTasksWidget
+import com.seagori.hgr.widget.StartCoachWidget
 import com.seagori.hgr.sync.AndroidSyncUi
 import com.seagori.hgr.sync.DiscoveredServer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +29,17 @@ import kotlinx.coroutines.launch
 data class SettingsUi(
     val llm: LlmSettingsUi = LlmSettingsUi(),
     val language: AppLanguage = AppLanguage.SYSTEM,
+    val theme: AppThemePreset = AppThemePreset.SAGE,
+    val reminderEnabled: Boolean = false,
+    val reminderCooldownMinutes: Int = SettingsStore.DEFAULT_REMINDER_COOLDOWN_MINUTES,
+    val reminderRetryMinutes: Int = SettingsStore.DEFAULT_REMINDER_RETRY_MINUTES,
+    val reminderDurationSeconds: Int = SettingsStore.DEFAULT_REMINDER_DURATION_SECONDS,
+    val reminderMessage: String = "",
+    val dailyReminderEnabled: Boolean = false,
+    val dailyReminderCooldownMinutes: Int = SettingsStore.DEFAULT_REMINDER_COOLDOWN_MINUTES,
+    val dailyReminderRetryMinutes: Int = SettingsStore.DEFAULT_REMINDER_RETRY_MINUTES,
+    val dailyReminderDurationSeconds: Int = SettingsStore.DEFAULT_REMINDER_DURATION_SECONDS,
+    val pinnedDailyEnabled: Boolean = false,
     val saved: Boolean = false,
     val testingProfile: LlmProfile? = null,
     val testMessage: String? = null,
@@ -32,10 +51,25 @@ data class SettingsUi(
 
 class SettingsViewModel(
     private val repository: CoachRepository,
-    private val syncManager: AndroidSyncManager
+    private val syncManager: AndroidSyncManager,
+    private val settings: SettingsStore
 ) : ViewModel() {
     private val _ui = MutableStateFlow(
-        SettingsUi(llm = repository.llmSettings(), language = repository.appLanguage())
+        SettingsUi(
+            llm = repository.llmSettings(),
+            language = repository.appLanguage(),
+            theme = settings.appTheme,
+            reminderEnabled = settings.reminderEnabled,
+            reminderCooldownMinutes = settings.reminderCooldownMinutes,
+            reminderRetryMinutes = settings.reminderRetryMinutes,
+            reminderDurationSeconds = settings.reminderDurationSeconds,
+            reminderMessage = settings.reminderMessage,
+            dailyReminderEnabled = settings.dailyReminderEnabled,
+            dailyReminderCooldownMinutes = settings.dailyReminderCooldownMinutes,
+            dailyReminderRetryMinutes = settings.dailyReminderRetryMinutes,
+            dailyReminderDurationSeconds = settings.dailyReminderDurationSeconds,
+            pinnedDailyEnabled = settings.pinnedDailyNotificationEnabled
+        )
     )
     val ui: StateFlow<SettingsUi> = _ui
 
@@ -58,6 +92,78 @@ class SettingsViewModel(
     fun onLanguageChange(language: AppLanguage) {
         repository.setAppLanguage(language)
         update { it.copy(language = language, testMessage = null, backupMessage = null) }
+    }
+
+    fun onThemeChange(context: Context, preset: AppThemePreset) {
+        settings.appTheme = preset
+        AppTheme.set(preset)
+        update { it.copy(theme = preset) }
+        StartCoachWidget.updateAllWidgets(context)
+        DailyTasksWidget.updateAllWidgets(context)
+    }
+
+    fun onReminderEnabledChange(context: Context, enabled: Boolean) {
+        settings.reminderEnabled = enabled
+        update { it.copy(reminderEnabled = enabled) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onReminderCooldownChange(context: Context, minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        settings.reminderCooldownMinutes = clamped
+        update { it.copy(reminderCooldownMinutes = clamped) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onReminderMessageChange(context: Context, message: String) {
+        settings.reminderMessage = message
+        update { it.copy(reminderMessage = message) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onDailyReminderEnabledChange(context: Context, enabled: Boolean) {
+        settings.dailyReminderEnabled = enabled
+        update { it.copy(dailyReminderEnabled = enabled) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onDailyReminderCooldownChange(context: Context, minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        settings.dailyReminderCooldownMinutes = clamped
+        update { it.copy(dailyReminderCooldownMinutes = clamped) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onReminderRetryChange(context: Context, minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        settings.reminderRetryMinutes = clamped
+        update { it.copy(reminderRetryMinutes = clamped) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onReminderDurationChange(context: Context, seconds: Int) {
+        val clamped = seconds.coerceAtLeast(1)
+        settings.reminderDurationSeconds = clamped
+        update { it.copy(reminderDurationSeconds = clamped) }
+    }
+
+    fun onDailyReminderRetryChange(context: Context, minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        settings.dailyReminderRetryMinutes = clamped
+        update { it.copy(dailyReminderRetryMinutes = clamped) }
+        ReminderManager.onSettingsChanged(context, settings)
+    }
+
+    fun onDailyReminderDurationChange(context: Context, seconds: Int) {
+        val clamped = seconds.coerceAtLeast(1)
+        settings.dailyReminderDurationSeconds = clamped
+        update { it.copy(dailyReminderDurationSeconds = clamped) }
+    }
+
+    fun onPinnedDailyEnabledChange(context: Context, enabled: Boolean) {
+        settings.pinnedDailyNotificationEnabled = enabled
+        update { it.copy(pinnedDailyEnabled = enabled) }
+        DailyProgressNotification.update(context, settings)
     }
 
     fun onUrlChange(profile: LlmProfile, value: String) =

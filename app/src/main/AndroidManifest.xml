@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Android 17+ may require this for automatic local network discovery. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
@@ -31,14 +32,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".quick.QuickOverlayActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:launchMode="singleInstance"
-            android:taskAffinity=""
-            android:theme="@style/Theme.StartCoach.Overlay" />
-
         <receiver
             android:name=".widget.StartCoachWidgetReceiver"
             android:exported="true">
@@ -50,18 +43,23 @@
                 android:resource="@xml/start_coach_widget_info" />
         </receiver>
 
-        <service
-            android:name=".quick.QuickStartTileService"
-            android:exported="true"
-            android:icon="@drawable/ic_quick_tile"
-            android:label="@string/quick_tile_label"
-            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+        <receiver
+            android:name=".widget.DailyTasksWidgetReceiver"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.service.quicksettings.action.QS_TILE" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
-                android:name="android.service.quicksettings.ACTIVE_TILE"
-                android:value="true" />
-        </service>
+                android:name="android.appwidget.provider"
+                android:resource="@xml/daily_tasks_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".reminder.ReminderAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".reminder.DailyProgressDismissReceiver"
+            android:exported="false" />
     </application>
 </manifest>

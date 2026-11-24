@@ -1,5 +1,6 @@
 package com.seagori.hgr.desktop
 
+import com.seagori.hgr.domain.DailyTaskState
 import com.seagori.hgr.domain.GoalStatus
 import kotlinx.serialization.Serializable
 
@@ -141,7 +142,8 @@ data class DesktopData(
     val curriculumProgress: List<DesktopCurriculumProgress> = emptyList(),
     val paths: List<DesktopPath> = emptyList(),
     val steps: List<DesktopStep> = emptyList(),
-    val cachedChoices: Map<Long, List<DesktopCachedChoice>> = emptyMap()
+    val cachedChoices: Map<Long, List<DesktopCachedChoice>> = emptyMap(),
+    val dailyTasks: DailyTaskState = DailyTaskState()
 )
 
 data class DesktopPathUi(

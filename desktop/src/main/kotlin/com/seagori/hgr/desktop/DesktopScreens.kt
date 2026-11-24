@@ -3,6 +3,7 @@ package com.seagori.hgr.desktop
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,14 +26,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -44,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,15 +68,19 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.seagori.hgr.domain.ActivityCalendar
 import com.seagori.hgr.domain.ActivityEvent
+import com.seagori.hgr.domain.DailyTaskItem
 import com.seagori.hgr.domain.GoalStatus
 import com.seagori.hgr.domain.LlmProfile
 import com.seagori.hgr.domain.Outcome
@@ -79,6 +92,7 @@ import com.seagori.hgr.i18n.LocalStrings
 import com.seagori.hgr.sync.SyncCrypto
 import com.seagori.hgr.ui.components.ActivitySection
 import com.seagori.hgr.ui.components.AppFilterChip
+import com.seagori.hgr.ui.components.DailyCalendarSection
 import com.seagori.hgr.ui.components.GoalCardList
 import com.seagori.hgr.ui.components.GoalRow
 import com.seagori.hgr.ui.components.OptionItem
@@ -92,6 +106,7 @@ import com.seagori.hgr.ui.components.SmallPill
 import com.seagori.hgr.ui.components.card
 import com.seagori.hgr.ui.theme.Accent
 import com.seagori.hgr.ui.theme.AccentDeep
+import com.seagori.hgr.ui.theme.AppThemePreset
 import com.seagori.hgr.ui.theme.AccentLight
 import com.seagori.hgr.ui.theme.Bg
 import com.seagori.hgr.ui.theme.Card
@@ -112,12 +127,14 @@ fun DesktopApp(state: DesktopAppState) {
     val strings = LocalStrings.current
     val tabs = listOf(
         DesktopTab(DesktopScreen.HOME, strings.navHome, Icons.Outlined.Home),
+        DesktopTab(DesktopScreen.DAILY, strings.navDaily, Icons.Outlined.CheckCircle),
         DesktopTab(DesktopScreen.RECORDS, strings.navRecords, Icons.AutoMirrored.Outlined.MenuBook),
         DesktopTab(DesktopScreen.GOALS, strings.navGoals, Icons.Outlined.Flag),
         DesktopTab(DesktopScreen.SETTINGS, strings.navSettings, Icons.Outlined.Settings)
     )
     val showBar = state.screen in setOf(
         DesktopScreen.HOME,
+        DesktopScreen.DAILY,
         DesktopScreen.RECORDS,
         DesktopScreen.GOALS,
         DesktopScreen.SETTINGS
@@ -149,6 +166,7 @@ fun DesktopApp(state: DesktopAppState) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (state.screen) {
                 DesktopScreen.HOME -> HomeScreen(state)
+                DesktopScreen.DAILY -> DesktopDailyTasksScreen(state)
                 DesktopScreen.RECORDS -> RecordsScreen(state)
                 DesktopScreen.GOALS -> GoalsScreen(state)
                 DesktopScreen.SETTINGS -> SettingsScreen(state)
@@ -172,8 +190,8 @@ private fun HomeScreen(state: DesktopAppState) {
             .padding(top = 40.dp, bottom = 24.dp)
     ) {
         Text(
-            text = strings.homeTitle,
-            fontSize = 30.sp,
+            text = strings.appName,
+            fontSize = 28.sp,
             lineHeight = 38.sp,
             fontWeight = FontWeight.Bold,
             color = Ink
@@ -1015,8 +1033,13 @@ private fun SettingsScreen(state: DesktopAppState) {
     var backupFile by remember { mutableStateOf<File?>(null) }
     var backupPassword by remember { mutableStateOf("") }
     var showLicenses by remember { mutableStateOf(false) }
-    val licenseText = remember(showLicenses) {
-        if (showLicenses) loadLicenseText() else ""
+    var licenseSections by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    LaunchedEffect(showLicenses) {
+        if (showLicenses && licenseSections.isEmpty()) {
+            licenseSections = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                loadLicenseSections()
+            }
+        }
     }
 
     Column(
@@ -1035,6 +1058,22 @@ private fun SettingsScreen(state: DesktopAppState) {
                     selected = state.language == language,
                     onClick = { state.changeLanguage(language) },
                     label = languageLabel(language, strings.languageSystem)
+                )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(strings.themeSection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppThemePreset.entries.forEach { preset ->
+                AppFilterChip(
+                    selected = state.theme == preset,
+                    onClick = { state.updateTheme(preset) },
+                    label = when (preset) {
+                        AppThemePreset.SAGE -> strings.themeSage
+                        AppThemePreset.BLUE -> strings.themeBlue
+                        AppThemePreset.DARK -> strings.themeDark
+                    }
                 )
             }
         }
@@ -1135,15 +1174,122 @@ private fun SettingsScreen(state: DesktopAppState) {
             )
         }
         Spacer(Modifier.height(28.dp))
+        Text(strings.reminderSection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(strings.reminderToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Switch(
+                checked = state.reminderEnabled,
+                onCheckedChange = { state.updateReminderEnabled(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Card,
+                    checkedTrackColor = AccentDeep
+                )
+            )
+        }
+        if (state.reminderEnabled) {
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderRetryLabel,
+                value = state.reminderRetryMinutes,
+                presets = listOf(10, 15, 30),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateReminderRetry(it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderCooldown,
+                value = state.reminderCooldownMinutes,
+                presets = listOf(60, 120, 180),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateReminderCooldown(it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderDurationLabel,
+                value = state.reminderDurationSeconds,
+                presets = listOf(5, 15, 30),
+                unitLabel = strings::secondsShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateReminderDuration(it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = state.reminderMessage,
+                onValueChange = { state.updateReminderMessage(it) },
+                label = { Text(strings.reminderMessageLabel) },
+                placeholder = { Text(strings.reminderDefaultText) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(strings.reminderAutoDismissNote, color = Muted, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(24.dp))
+        Text(strings.dailyReminderSection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(strings.dailyReminderToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Switch(
+                checked = state.dailyReminderEnabled,
+                onCheckedChange = { state.updateDailyReminderEnabled(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Card,
+                    checkedTrackColor = AccentDeep
+                )
+            )
+        }
+        if (state.dailyReminderEnabled) {
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderRetryLabel,
+                value = state.dailyReminderRetryMinutes,
+                presets = listOf(10, 15, 30),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateDailyReminderRetry(it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderCooldown,
+                value = state.dailyReminderCooldownMinutes,
+                presets = listOf(60, 120, 180),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateDailyReminderCooldown(it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            DesktopIntervalSelector(
+                label = strings.reminderDurationLabel,
+                value = state.dailyReminderDurationSeconds,
+                presets = listOf(5, 15, 30),
+                unitLabel = strings::secondsShort,
+                customLabel = strings.customOption,
+                onSelect = { state.updateDailyReminderDuration(it) }
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("${strings.dailyReminderMessage} · ${strings.reminderAutoDismissNote}", color = Muted, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(28.dp))
         Text(strings.licenseSection, fontWeight = FontWeight.Bold, color = Ink)
         Spacer(Modifier.height(10.dp))
         SecondaryButton(strings.licenseInfo) { showLicenses = true }
     }
 
-    if (showLicenses) {
+    if (showLicenses && licenseSections.isNotEmpty()) {
         LicenseDialog(
             title = strings.licenseInfo,
-            text = licenseText,
+            sections = licenseSections,
             closeLabel = strings.close,
             onDismiss = { showLicenses = false }
         )
@@ -1206,22 +1352,23 @@ private fun SettingsScreen(state: DesktopAppState) {
 private enum class BackupAction { EXPORT, IMPORT }
 
 private val LICENSE_FILES = listOf(
-    "licenses/NOTICE.txt",
-    "licenses/GPL-3.0.txt",
-    "licenses/CC-BY-SA-4.0.txt",
-    "licenses/THIRD_PARTY_NOTICES.txt",
-    "licenses/Apache-2.0.txt",
-    "licenses/Bouncy-Castle.txt"
+    "NOTICE" to "licenses/NOTICE.txt",
+    "GPL-3.0" to "licenses/GPL-3.0.txt",
+    "CC-BY-SA-4.0" to "licenses/CC-BY-SA-4.0.txt",
+    "Third-Party" to "licenses/THIRD_PARTY_NOTICES.txt",
+    "Apache-2.0" to "licenses/Apache-2.0.txt",
+    "Bouncy Castle" to "licenses/Bouncy-Castle.txt"
 )
 
-private fun loadLicenseText(): String =
-    LICENSE_FILES.joinToString(separator = "\n\n" + "-".repeat(72) + "\n\n") { path ->
-        runCatching {
+private fun loadLicenseSections(): List<Pair<String, String>> =
+    LICENSE_FILES.map { (label, path) ->
+        val body = runCatching {
             object {}.javaClass.classLoader
                 ?.getResourceAsStream(path)
                 ?.bufferedReader()
                 ?.use { it.readText() }
         }.getOrNull() ?: path
+        label to body
     }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1469,3 +1616,340 @@ private fun qrImageBitmap(text: String, size: Int = 512): ImageBitmap? = runCatc
     }
     image.toComposeImageBitmap()
 }.getOrNull()
+
+@Composable
+private fun DesktopDailyTasksScreen(state: DesktopAppState) {
+    val strings = LocalStrings.current
+    val dailyState = state.data.dailyTasks
+    val today = remember { com.seagori.hgr.domain.DailyTaskState.todayDateKey() }
+    val completedIds = remember(dailyState, today) { dailyState.effectiveCompletedIds(today) }
+    val percent = remember(dailyState, today) { dailyState.todayPercent(today) }
+    var newTaskText by remember { mutableStateOf("") }
+    var showHistory by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = strings.dailyTasksTitle,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Ink
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = strings.dailyTasksSubtitle,
+                    color = Muted,
+                    fontSize = 13.sp
+                )
+            }
+            IconButton(onClick = { showHistory = true }) {
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth,
+                    contentDescription = strings.dailyHistoryTitle,
+                    tint = AccentDeep
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .card()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = strings.dailyProgressLabel(completedIds.size, dailyState.tasks.size, percent),
+                    color = Ink,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "$percent%",
+                    color = AccentDeep,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { (percent / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(99.dp)),
+                color = AccentDeep,
+                trackColor = Soft
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = newTaskText,
+                onValueChange = { newTaskText = it },
+                placeholder = { Text(strings.dailyTaskHint) },
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyUp && event.key == Key.Enter) {
+                            val trimmed = newTaskText.trim()
+                            if (trimmed.isNotEmpty()) {
+                                state.addDailyTask(trimmed)
+                                newTaskText = ""
+                            }
+                            true
+                        } else {
+                            false
+                        }
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(AccentDeep)
+                    .clickable {
+                        val trimmed = newTaskText.trim()
+                        if (trimmed.isNotEmpty()) {
+                            state.addDailyTask(trimmed)
+                            newTaskText = ""
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+", color = Card, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+
+        if (dailyState.tasks.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .card()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = strings.dailyTaskEmpty,
+                    color = Muted,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(dailyState.tasks, key = { it.id }) { task ->
+                    DesktopDailyTaskRow(
+                        task = task,
+                        completed = task.id in completedIds,
+                        onToggle = { state.toggleDailyTask(task.id) },
+                        onDelete = { state.deleteDailyTask(task.id) }
+                    )
+                }
+            }
+        }
+    }
+
+    if (showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            containerColor = Card,
+            titleContentColor = Ink,
+            textContentColor = Ink,
+            tonalElevation = 0.dp,
+            title = { Text(strings.dailyHistoryTitle, fontWeight = FontWeight.Bold) },
+            text = {
+                DailyCalendarSection(dailyRates = dailyState.dailyRates)
+            },
+            confirmButton = {
+                TextButton(onClick = { showHistory = false }) {
+                    Text(strings.close, color = AccentDeep)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun DesktopDailyTaskRow(
+    task: DailyTaskItem,
+    completed: Boolean,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var dragOffset by remember(task.id) { mutableFloatStateOf(0f) }
+    var swipedThisGesture by remember(task.id) { mutableStateOf(false) }
+    val boxColor = if (completed) Soft else AccentDeep
+    val textColor = if (completed) Muted else Color.White
+    val deleteTint = if (completed) Muted else Color.White.copy(alpha = 0.85f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (completed) AccentLight else Color(0xFF1F4D31))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(dragOffset.roundToInt(), 0) }
+                .background(boxColor)
+                .pointerInput(task.id) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { swipedThisGesture = false },
+                        onHorizontalDrag = { _, dragAmount ->
+                            dragOffset = (dragOffset + dragAmount).coerceIn(-120f, 120f)
+                            if (!swipedThisGesture && kotlin.math.abs(dragOffset) > 72f) {
+                                swipedThisGesture = true
+                                onToggle()
+                            }
+                        },
+                        onDragEnd = { dragOffset = 0f },
+                        onDragCancel = { dragOffset = 0f }
+                    )
+                }
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 24.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = task.title,
+                color = textColor,
+                fontSize = 14.sp,
+                fontWeight = if (completed) FontWeight.Normal else FontWeight.SemiBold,
+                textDecoration = if (completed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Outlined.DeleteOutline,
+                    contentDescription = LocalStrings.current.delete,
+                    tint = deleteTint
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DesktopIntervalSelector(
+    label: String,
+    value: Int,
+    presets: List<Int>,
+    unitLabel: (Int) -> String,
+    customLabel: String,
+    onSelect: (Int) -> Unit
+) {
+    val strings = LocalStrings.current
+    var showCustomDialog by remember { mutableStateOf(false) }
+    var customInput by remember(value) { mutableStateOf(value.toString()) }
+    val isCustom = value !in presets
+
+    Text(label, color = Muted, fontSize = 13.sp)
+    Spacer(Modifier.height(6.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        presets.forEach { preset ->
+            AppFilterChip(
+                selected = value == preset,
+                onClick = { onSelect(preset) },
+                label = unitLabel(preset)
+            )
+        }
+        AppFilterChip(
+            selected = isCustom,
+            onClick = {
+                customInput = value.toString()
+                showCustomDialog = true
+            },
+            label = if (isCustom) "$customLabel (${unitLabel(value)})" else customLabel
+        )
+    }
+
+    if (showCustomDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomDialog = false },
+            containerColor = Card,
+            titleContentColor = Ink,
+            textContentColor = Ink,
+            tonalElevation = 0.dp,
+            title = { Text(label) },
+            text = {
+                val currentNum = (customInput.toIntOrNull() ?: value).coerceAtLeast(1)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = customInput,
+                        onValueChange = { next -> customInput = next.filter { it.isDigit() }.take(4) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { customInput = (currentNum - 5).coerceAtLeast(1).toString() }) {
+                            Text("-5", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { customInput = (currentNum - 1).coerceAtLeast(1).toString() }) {
+                            Text("-1", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        Text(unitLabel(currentNum), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        TextButton(onClick = { customInput = (currentNum + 1).coerceAtMost(9999).toString() }) {
+                            Text("+1", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { customInput = (currentNum + 5).coerceAtMost(9999).toString() }) {
+                            Text("+5", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val parsed = customInput.toIntOrNull()
+                    if (parsed != null && parsed >= 1) {
+                        onSelect(parsed)
+                    }
+                    showCustomDialog = false
+                }) {
+                    Text(strings.save, color = AccentDeep)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDialog = false }) {
+                    Text(strings.cancel, color = Muted)
+                }
+            }
+        )
+    }
+}

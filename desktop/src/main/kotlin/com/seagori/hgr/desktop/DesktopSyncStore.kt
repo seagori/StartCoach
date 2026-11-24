@@ -242,12 +242,9 @@ class DesktopSyncStore(
                 0L,
                 current.updatedAt,
                 syncPayload {
-                    put("fastApiUrl", current.fastApiUrl)
+                    // API 키와 엔드포인트는 기기 로컬에만 유지하고 동기화하지 않는다.
                     put("fastModelId", current.fastModelId)
-                    put("fastToken", current.fastToken)
-                    put("coachApiUrl", current.coachApiUrl)
                     put("coachModelId", current.coachModelId)
-                    put("coachToken", current.coachToken)
                     put("coachReasoningEffort", current.coachReasoningEffort)
                     put("language", current.language.name)
                 }
@@ -719,19 +716,15 @@ class DesktopSyncStore(
         val store = settings ?: return null
         val payload = record.payload
         val current = store.snapshot()
-        // 동기화로 받은 URL도 사용자 입력과 동일한 검증을 거친다.
-        val fastApiUrl = normalizeSyncedUrl(payload.string("fastApiUrl").orEmpty()) ?: return null
-        val coachApiUrl = normalizeSyncedUrl(payload.string("coachApiUrl").orEmpty()) ?: return null
-        // 키는 있으면 갱신하되, 비어 있는 값으로 지우지는 않는다.
-        // 기존 토큰이 그대로 전달되면 origin은 유지해 다른 URL로 재바인딩되지 않게 한다.
+        // API 키와 엔드포인트는 기기 로컬 설정을 유지한다.
         store.applySnapshot(
             SettingsSnapshot(
-                fastApiUrl = fastApiUrl,
+                fastApiUrl = current.fastApiUrl,
                 fastModelId = payload.string("fastModelId").orEmpty(),
-                fastToken = payload.string("fastToken").orEmpty().ifBlank { current.fastToken },
-                coachApiUrl = coachApiUrl,
+                fastToken = current.fastToken,
+                coachApiUrl = current.coachApiUrl,
                 coachModelId = payload.string("coachModelId").orEmpty(),
-                coachToken = payload.string("coachToken").orEmpty().ifBlank { current.coachToken },
+                coachToken = current.coachToken,
                 coachReasoningEffort = payload.string("coachReasoningEffort")
                     ?: SettingsStore.DEFAULT_REASONING,
                 language = AppLanguage.fromStored(payload.string("language")),
@@ -741,13 +734,6 @@ class DesktopSyncStore(
         )
         onSettingsChanged()
         return 0L
-    }
-
-    /** 빈 값은 그대로 두고, https URL만 정규화해 통과시킨다. 잘못된 값이면 null을 돌려 기록을 거부한다. */
-    private fun normalizeSyncedUrl(raw: String): String? {
-        val trimmed = raw.trim()
-        if (trimmed.isEmpty()) return ""
-        return UrlRules.normalize(trimmed)
     }
 
     private fun localUpdatedAt(data: DesktopData, type: String, localId: Long): Long = when (type) {

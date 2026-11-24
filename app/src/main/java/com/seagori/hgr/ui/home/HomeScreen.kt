@@ -89,8 +89,8 @@ fun HomeScreen(
             .padding(top = 72.dp, bottom = 24.dp)
     ) {
         Text(
-            text = strings.homeTitle,
-            fontSize = 30.sp,
+            text = strings.appName,
+            fontSize = 28.sp,
             lineHeight = 38.sp,
             fontWeight = FontWeight.Bold,
             color = Ink

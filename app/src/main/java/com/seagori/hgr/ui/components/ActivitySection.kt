@@ -193,7 +193,7 @@ private fun ActivityBars(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(126.dp),
+            .height(88.dp),
         verticalAlignment = Alignment.Bottom
     ) {
         summary.days.forEachIndexed { index, day ->
@@ -203,13 +203,18 @@ private fun ActivityBars(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clickable { onSelect(index) },
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) Soft.copy(alpha = 0.65f) else androidx.compose.ui.graphics.Color.Transparent)
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .width(10.dp)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Soft.copy(alpha = 0.55f)),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     if (day.attempts == 0) {

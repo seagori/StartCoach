@@ -252,12 +252,9 @@ class AndroidSyncAdapter(
             0L,
             current.updatedAt,
             syncPayload {
-                put("fastApiUrl", current.fastApiUrl)
+                // API 키와 엔드포인트는 기기 로컬에만 유지하고 동기화하지 않는다.
                 put("fastModelId", current.fastModelId)
-                put("fastToken", tokens.rawToken(LlmProfile.FAST))
-                put("coachApiUrl", current.coachApiUrl)
                 put("coachModelId", current.coachModelId)
-                put("coachToken", tokens.rawToken(LlmProfile.COACH))
                 put("coachReasoningEffort", current.coachReasoningEffort)
                 put("language", current.language.name)
             }
@@ -574,14 +571,13 @@ class AndroidSyncAdapter(
     private suspend fun applySettings(record: SyncRecord): Long? {
         val payload = record.payload
         val language = AppLanguage.fromStored(payload.string("language"))
-        // 동기화로 받은 URL도 사용자 입력과 동일한 검증을 거친다.
-        val fastUrl = normalizeSyncedUrl(payload.string("fastApiUrl").orEmpty()) ?: return null
-        val coachUrl = normalizeSyncedUrl(payload.string("coachApiUrl").orEmpty()) ?: return null
+        // API 키와 엔드포인트는 기기 로컬 설정을 유지한다.
+        val current = settings.snapshot()
         settings.applySnapshot(
             SettingsSnapshot(
-                fastApiUrl = fastUrl,
+                fastApiUrl = current.fastApiUrl,
                 fastModelId = payload.string("fastModelId").orEmpty(),
-                coachApiUrl = coachUrl,
+                coachApiUrl = current.coachApiUrl,
                 coachModelId = payload.string("coachModelId").orEmpty(),
                 coachReasoningEffort = payload.string("coachReasoningEffort")
                     ?: SettingsStore.DEFAULT_REASONING,
@@ -589,26 +585,8 @@ class AndroidSyncAdapter(
                 updatedAt = record.updatedAt
             )
         )
-        // 키는 있으면 갱신하되, 비어 있는 값으로 지우지는 않는다.
-        // 기존 토큰이 그대로 전달되면 origin은 유지해 다른 URL로 재바인딩되지 않게 한다.
-        applyToken(LlmProfile.FAST, payload.string("fastToken").orEmpty(), fastUrl)
-        applyToken(LlmProfile.COACH, payload.string("coachToken").orEmpty(), coachUrl)
         if (AppLocale.language.value != language) AppLocale.set(language)
         return 0L
-    }
-
-    private fun normalizeSyncedUrl(raw: String): String? {
-        val trimmed = raw.trim()
-        if (trimmed.isEmpty()) return ""
-        return UrlRules.normalize(trimmed)
-    }
-
-    private fun applyToken(profile: LlmProfile, token: String, url: String) {
-        val trimmed = token.trim()
-        if (trimmed.isBlank()) return
-        if (tokens.rawToken(profile) == trimmed && tokens.originFor(profile).isNotBlank()) return
-        val origin = UrlRules.origin(url) ?: return
-        tokens.save(profile, trimmed, origin)
     }
 
     private suspend fun delete(type: String, localId: Long) {

@@ -31,6 +31,8 @@ import com.seagori.hgr.MainActivity
 import com.seagori.hgr.StartCoachApplication
 import com.seagori.hgr.i18n.AppLocale
 import com.seagori.hgr.shortcut.GoalShortcutHelper
+import com.seagori.hgr.ui.theme.WidgetPalette
+import com.seagori.hgr.ui.theme.widgetPalette
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -65,11 +67,13 @@ class StartCoachWidget : GlanceAppWidget() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
+        val palette = widgetPalette(container.settings.appTheme)
         provideContent {
             WidgetContent(
                 goalTitle = goal?.title,
                 actionText = actionText ?: strings.widgetEmpty,
                 hintText = strings.quickStartButton,
+                palette = palette,
                 intent = intent
             )
         }
@@ -80,12 +84,13 @@ class StartCoachWidget : GlanceAppWidget() {
         goalTitle: String?,
         actionText: String,
         hintText: String,
+        palette: WidgetPalette,
         intent: Intent
     ) {
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(ColorProvider(Color(0xFFFAF8F5)))
+                .background(ColorProvider(palette.bg))
                 .cornerRadius(20.dp)
                 .clickable(actionStartActivity(intent))
                 .padding(16.dp),
@@ -95,7 +100,7 @@ class StartCoachWidget : GlanceAppWidget() {
                 Text(
                     text = goalTitle,
                     style = TextStyle(
-                        color = ColorProvider(Color(0xFFC85A32)),
+                        color = ColorProvider(palette.accentDeep),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     ),
@@ -106,7 +111,7 @@ class StartCoachWidget : GlanceAppWidget() {
             Text(
                 text = actionText,
                 style = TextStyle(
-                    color = ColorProvider(Color(0xFF1D1B18)),
+                    color = ColorProvider(palette.ink),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 ),
@@ -117,7 +122,7 @@ class StartCoachWidget : GlanceAppWidget() {
                 Column(
                     modifier = GlanceModifier
                         .fillMaxWidth()
-                        .background(ColorProvider(Color(0xFFF3ECE4)))
+                        .background(ColorProvider(palette.accentLight))
                         .cornerRadius(12.dp)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -125,7 +130,7 @@ class StartCoachWidget : GlanceAppWidget() {
                     Text(
                         text = hintText,
                         style = TextStyle(
-                            color = ColorProvider(Color(0xFFC85A32)),
+                            color = ColorProvider(palette.accentDeep),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         ),

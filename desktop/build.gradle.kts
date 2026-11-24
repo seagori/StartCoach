@@ -15,7 +15,7 @@ val sharedDir = layout.buildDirectory.dir("generated/shared")
 val licenseAssetsDir = layout.buildDirectory.dir("generated/licenseAssets").get().asFile
 
 /** 루트의 라이선스 문서를 데스크탑 리소스로 복사해 인앱 라이선스 화면에서 읽는다. */
-val syncLicenseAssets by tasks.registering(Sync::class) {
+val syncLicenseAssets = tasks.register<Sync>("syncLicenseAssets") {
     into(File(licenseAssetsDir, "licenses"))
     from(rootProject.file("LICENSE")) { rename { "GPL-3.0.txt" } }
     from(rootProject.file("NOTICE")) { rename { "NOTICE.txt" } }
@@ -23,14 +23,16 @@ val syncLicenseAssets by tasks.registering(Sync::class) {
     from(rootProject.file("licenses"))
 }
 
-val copyShared by tasks.registering(Sync::class) {
+val copyShared = tasks.register<Sync>("copyShared") {
     from("../app/src/main/java") {
         include(
             "com/seagori/hgr/i18n/AppStrings.kt",
             "com/seagori/hgr/ui/theme/Theme.kt",
             "com/seagori/hgr/ui/components/Components.kt",
             "com/seagori/hgr/ui/components/ActivitySection.kt",
+            "com/seagori/hgr/ui/components/DailyCalendarSection.kt",
             "com/seagori/hgr/domain/Models.kt",
+            "com/seagori/hgr/domain/DailyTasks.kt",
             "com/seagori/hgr/domain/GoalDomains.kt",
             "com/seagori/hgr/domain/ActivityStats.kt",
             "com/seagori/hgr/domain/LlmModels.kt",
@@ -88,8 +90,8 @@ dependencies {
     implementation(libs.jmdns)
     implementation(libs.zxing.core)
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
 }
 
 tasks.test {
@@ -100,11 +102,16 @@ compose.desktop {
     application {
         mainClass = "com.seagori.hgr.desktop.MainKt"
         nativeDistributions {
-            packageName = "OneStep"
-            packageVersion = "1.0.0"
+            packageName = "One Step"
+            packageVersion = "0.2.1"
             targetFormats(TargetFormat.Msi)
             windows {
                 iconFile.set(project.file("icons/startcoach.ico"))
+                upgradeUuid = "b8c4e7a2-5f1d-4c9a-9e3b-7a2d6f8c1e40"
+                menu = true
+                shortcut = true
+                dirChooser = true
+                perUserInstall = true
             }
         }
         buildTypes.release.proguard {

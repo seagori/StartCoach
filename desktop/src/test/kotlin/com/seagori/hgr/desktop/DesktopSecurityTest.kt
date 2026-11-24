@@ -110,7 +110,7 @@ class DesktopSecurityTest {
             )
             val controller = SyncController(store)
 
-            // 페어링된 기기가 새 URL을 보내면서 토큰은 생략한 경우.
+            // 페어링된 기기가 URL과 토큰을 보내도 로컬 endpoint와 API 키는 덮어쓰지 않고 내보내지도 않는다.
             val stamp = System.currentTimeMillis() + 60_000
             val record = SyncRecord(
                 syncKey = "settings",
@@ -119,14 +119,16 @@ class DesktopSecurityTest {
                 updatedAt = stamp,
                 payload = buildJsonObject {
                     put("fastApiUrl", otherUrl)
-                    put("fastToken", "")
-                    put("coachApiUrl", "")
-                    put("coachToken", "")
+                    put("fastToken", "evil-token")
+                    put("coachApiUrl", otherUrl)
+                    put("coachToken", "evil-coach-token")
+                    put("fastModelId", "synced-model")
                 }
             )
             controller.applyServerRemote(ServerSyncState(), listOf(record), stamp)
 
-            assertEquals(otherUrl, settings.apiBaseUrl(LlmProfile.FAST))
+            assertEquals(apiUrl, settings.apiBaseUrl(LlmProfile.FAST))
+            assertEquals("synced-model", settings.modelId(LlmProfile.FAST))
             val realOrigin = assertNotNull(UrlRules.origin(apiUrl))
             val evilOrigin = assertNotNull(UrlRules.origin(otherUrl))
             assertEquals("vault-token", settings.tokenFor(LlmProfile.FAST, realOrigin))
@@ -134,6 +136,12 @@ class DesktopSecurityTest {
                 settings.tokenFor(LlmProfile.FAST, evilOrigin),
                 "새 URL로 기존 키가 재바인딩되면 안 된다"
             )
+            val exportedSettings = store.snapshot(emptyList()).first { it.record.type == SyncTypes.SETTINGS }.record.payload
+            kotlin.test.assertFalse("fastApiUrl" in exportedSettings)
+            kotlin.test.assertFalse("fastToken" in exportedSettings)
+            kotlin.test.assertFalse("coachApiUrl" in exportedSettings)
+            kotlin.test.assertFalse("coachToken" in exportedSettings)
+            Unit
         } finally {
             runCatching { root.removeNode() }
             keyDir.deleteRecursively()

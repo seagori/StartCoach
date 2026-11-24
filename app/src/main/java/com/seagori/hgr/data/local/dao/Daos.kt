@@ -37,7 +37,7 @@ interface GoalDao {
     suspend fun listAll(): List<GoalEntity>
 
     @Query("DELETE FROM goals")
-    suspend fun deleteAll()
+    suspend fun deleteAll(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(goals: List<GoalEntity>)
@@ -61,7 +61,7 @@ interface SessionDao {
     suspend fun getById(id: Long): SessionEntity?
 
     @Query("DELETE FROM sessions WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(sessions: List<SessionEntity>)
@@ -85,7 +85,7 @@ interface SuggestionDao {
     suspend fun getById(id: Long): SuggestionEntity?
 
     @Query("DELETE FROM suggestions WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun replaceAll(items: List<SuggestionEntity>)
@@ -123,7 +123,7 @@ interface ExecutionDao {
     fun observeByGoal(goalId: Long): Flow<List<ExecutionEntity>>
 
     @Query("UPDATE executions SET archived = :archived, updatedAt = :updatedAt WHERE goalId = :goalId")
-    suspend fun setArchivedForGoal(goalId: Long, archived: Boolean, updatedAt: Long)
+    suspend fun setArchivedForGoal(goalId: Long, archived: Boolean, updatedAt: Long): Int
 
     @Query("SELECT * FROM executions WHERE sessionId = :sessionId ORDER BY createdAt DESC LIMIT 1")
     suspend fun latestForSession(sessionId: Long): ExecutionEntity?
@@ -153,7 +153,7 @@ interface MemoryDao {
     suspend fun getByGoal(goalId: Long): MemoryEntity?
 
     @Query("DELETE FROM memories WHERE goalId = :goalId")
-    suspend fun deleteByGoal(goalId: Long)
+    suspend fun deleteByGoal(goalId: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: MemoryEntity)

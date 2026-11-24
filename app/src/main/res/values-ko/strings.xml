@@ -1,5 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">한걸음</string>
     <string name="widget_description">최근 목표의 다음 작은 행동을 보여주고 한 번의 탭으로 바로 시작합니다</string>
-    <string name="quick_tile_label">바로 시작</string>
 </resources>

@@ -71,18 +71,12 @@ class AppStrings(val lang: AppLang) {
 
     // 하단 탭
     val navHome = pick("홈", "ホーム", "首页", "首頁", "Home")
+    val navDaily = pick("할일", "今日", "待办", "待辦", "Today")
     val navRecords = pick("기록", "記録", "记录", "紀錄", "Records")
     val navGoals = pick("목표", "目標", "目标", "目標", "Goals")
     val navSettings = pick("설정", "設定", "设置", "設定", "Settings")
 
     // 홈
-    val homeTitle = pick(
-        "오늘,\n무엇을 할까요?",
-        "今日、\n何をしますか？",
-        "今天\n想做什么？",
-        "今天\n想做什麼？",
-        "What do you\nwant to do today?"
-    )
     val homeInputHint = pick(
         "하고 싶은 것 입력하기",
         "やりたいことを入力",
@@ -1079,15 +1073,9 @@ class AppStrings(val lang: AppLang) {
         "Add a goal to see your next small action here."
     )
     val widgetOpenApp = pick("탭해서 바로 시작하기", "タップしてすぐ始める", "点击立即开始", "點擊立即開始", "Tap to start now")
-    val quickTileSection = pick("빠른 설정 타일", "クイック設定タイル", "快速设置磁贴", "快速設定圖塊", "Quick Settings Tile")
-    val quickTileToggle = pick("알림바 빠른 시작 타일 사용", "通知バーのクイック開始タイルを使う", "启用通知栏快速开始磁贴", "啟用通知列快速開始圖塊", "Enable Quick Settings tile")
-    val quickTileAdd = pick("알림바에 타일 추가", "通知バーにタイルを追加", "添加磁贴到通知栏", "新增圖塊到通知列", "Add tile to Quick Settings")
-    val quickTileOpenFull = pick("전체 화면으로 열기", "全画面で開く", "在完整界面中打开", "在完整畫面中開啟", "Open full app")
     val desktopTrayOpen = pick("창 열기", "ウィンドウを開く", "打开窗口", "開啟視窗", "Open window")
     val desktopMiniBarMode = pick("미니 바 모드", "ミニバーモード", "迷你栏模式", "迷你列模式", "Mini-bar mode")
     val desktopTrayExit = pick("종료", "終了", "退出", "結束", "Exit")
-    val desktopMiniNext = pick("다음 할 일: ", "次の行動: ", "下一步: ", "下一步: ", "Next: ")
-    val desktopMiniStart = pick("시작", "開始", "开始", "開始", "Start")
 
     // 동기화/AI 상태 메시지
     val aiResponseParseFailed = pick(
@@ -1174,6 +1162,112 @@ class AppStrings(val lang: AppLang) {
         "$deviceName 同步完成",
         "$deviceName synced"
     )
+
+    // 오늘 할일 (매일 초기화)
+    val dailyTasksTitle = pick("오늘 할일", "今日のタスク", "今日待办", "今日待辦", "Today's tasks")
+    val dailyTasksSubtitle = ""
+    val dailyTaskHint = pick("매일 할 일 추가하기", "毎日のタスクを追加", "添加每日待办", "新增每日待辦", "Add a daily task")
+    val dailyTaskEmpty = pick(
+        "아직 등록된 할 일이 없어요. 위에서 추가해 보세요.",
+        "まだタスクがありません。上で追加してみましょう。",
+        "还没有每日待办，请在上方添加。",
+        "還沒有每日待辦，請在上方新增。",
+        "No daily tasks yet. Add one above."
+    )
+    fun dailyProgressLabel(done: Int, total: Int, percent: Int) = pick(
+        "오늘 달성률 $percent% ($done/$total)",
+        "今日の達成率 $percent% ($done/$total)",
+        "今日完成率 $percent% ($done/$total)",
+        "今日達成率 $percent% ($done/$total)",
+        "Today: $percent% ($done/$total)"
+    )
+    val dailyHistoryTitle = pick("월간 달성 기록", "月間の達成記録", "月度完成记录", "月度達成紀錄", "Monthly history")
+    val dailyHistoryNote = pick(
+        "연두색 원은 달성 비율, 진한 초록색 원은 100% 달성을 뜻해요.",
+        "黄緑の円は達成率、濃い緑の円は100%達成を表します。",
+        "浅绿圆圈表示完成比例，深绿圆圈表示 100% 完成。",
+        "淺綠圓圈表示達成比例，深綠圓圈表示 100% 達成。",
+        "Light green shows partial progress; dark green means 100%."
+    )
+
+    // 상단 헤드업 리마인더
+    val reminderSection = pick("화면 리마인더", "画面リマインダー", "屏幕提醒", "螢幕提醒", "Screen reminder")
+    val reminderToggle = pick(
+        "사용 중 상단 헤드업 알림 띄우기",
+        "使用中に上部のヘッドアップ通知を表示",
+        "使用时在顶部弹出横幅提醒",
+        "使用時在頂部彈出橫幅提醒",
+        "Show heads-up reminder while active"
+    )
+    val reminderCooldown = pick("쿨타임 (분)", "クールダウン（分）", "冷却时间（分钟）", "冷卻時間（分鐘）", "Cooldown (min)")
+    val reminderMessageLabel = pick("리마인드 문구", "リマインド文言", "提醒内容", "提醒內容", "Reminder message")
+    val reminderDefaultText = pick("리마인더", "リマインダー", "提醒", "提醒", "Reminder")
+    val reminderAutoDismissNote = pick(
+        "화면을 보고 있을 때 쿨타임마다 조용히 띄웠다가 몇 초 뒤 자동으로 사라집니다.",
+        "画面を見ているときクールダウンごとに静かに表示し、数秒後に自動で消えます。",
+        "查看屏幕时按冷却时间静默弹出，几秒后自动消失。",
+        "查看螢幕時依冷卻時間靜默彈出，幾秒後自動消失。",
+        "Silently appears after each cooldown while you're active, then disappears automatically."
+    )
+    val dailyReminderSection = pick(
+        "오늘 할일 리마인더",
+        "今日のやることリマインダー",
+        "今日待办提醒",
+        "今日待辦提醒",
+        "Daily task reminder"
+    )
+    val dailyReminderToggle = pick(
+        "남은 할일이 있을 때 헤드업 배너 띄우기",
+        "残りのやることがある時にヘッドアップバナーを表示",
+        "有剩余待办时弹出横幅提醒",
+        "有剩餘待辦時彈出橫幅提醒",
+        "Show heads-up banner when tasks remain"
+    )
+    val dailyReminderMessage = pick(
+        "오늘 할 일이 남아있어요",
+        "今日のやるべきことが残っています",
+        "今天还有未完成的待办事项",
+        "今天還有未完成的待辦事項",
+        "You still have daily tasks left today"
+    )
+    val reminderRetryLabel = pick(
+        "재시도 간격 (미사용 시)",
+        "再試行間隔（未使用時）",
+        "重试间隔（未使用时）",
+        "重試間隔（未使用時）",
+        "Retry interval (when idle)"
+    )
+    val reminderDurationLabel = pick(
+        "알림 지속시간",
+        "通知の表示時間",
+        "通知持续时间",
+        "通知持續時間",
+        "Banner duration"
+    )
+    val customOption = pick("직접 입력", "カスタム", "自定义", "自訂", "Custom")
+    fun minutesShort(m: Int) = pick("${m}분", "${m}分", "${m}分钟", "${m}分鐘", "${m}m")
+    fun secondsShort(s: Int) = pick("${s}초", "${s}秒", "${s}秒", "${s}秒", "${s}s")
+    val pinnedDailySection = pick(
+        "알림창 오늘 할일 고정",
+        "通知欄に今日のやることを固定",
+        "通知栏固定今日待办",
+        "通知欄固定今日待辦",
+        "Pinned daily progress"
+    )
+    val pinnedDailyToggle = pick(
+        "알림창에 오늘 할일 진행도 표시",
+        "通知欄に今日の進捗バーを表示",
+        "在通知栏显示今日待办进度条",
+        "在通知欄顯示今日待辦進度條",
+        "Show daily progress bar in notification shade"
+    )
+    val themeSection = pick("색상 테마", "カラーテーマ", "颜色主题", "顏色主題", "Color theme")
+    val themeSage = pick("세이지", "セージ", "鼠尾草绿", "鼠尾草綠", "Sage")
+    val themeBlue = pick("블루", "ブルー", "蓝色", "藍色", "Blue")
+    val themeDark = pick("다크", "ダーク", "深色", "深色", "Dark")
+    val calendarPrevMonth = pick("이전 달", "前の月", "上个月", "上個月", "Previous month")
+    val calendarNextMonth = pick("다음 달", "次の月", "下个月", "下個月", "Next month")
+    val dailyTaskAdd = pick("할일 추가", "タスクを追加", "添加待办", "新增待辦", "Add task")
 }
 
 object AppLocale {

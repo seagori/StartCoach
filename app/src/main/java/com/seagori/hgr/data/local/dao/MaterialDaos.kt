@@ -27,7 +27,7 @@ interface MaterialDao {
     suspend fun replaceAll(items: List<MaterialEntity>)
 
     @Query("DELETE FROM materials WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Query("SELECT * FROM materials ORDER BY id ASC")
     suspend fun listAll(): List<MaterialEntity>
@@ -42,7 +42,7 @@ interface MaterialChunkDao {
     suspend fun getById(id: Long): MaterialChunkEntity?
 
     @Query("DELETE FROM material_chunks WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Update
     suspend fun update(item: MaterialChunkEntity)
@@ -66,13 +66,13 @@ interface CurriculumProgressDao {
     suspend fun getById(id: Long): CurriculumProgressEntity?
 
     @Query("DELETE FROM curriculum_progress WHERE goalId = :goalId")
-    suspend fun deleteByGoal(goalId: Long)
+    suspend fun deleteByGoal(goalId: Long): Int
 
     @Query("DELETE FROM curriculum_progress WHERE materialId = :materialId")
-    suspend fun deleteByMaterial(materialId: Long)
+    suspend fun deleteByMaterial(materialId: Long): Int
 
     @Query("DELETE FROM curriculum_progress WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: CurriculumProgressEntity)

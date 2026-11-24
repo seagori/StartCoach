@@ -29,20 +29,26 @@ import com.seagori.hgr.domain.maskApiKey
 import com.seagori.hgr.domain.toUserMessage
 import com.seagori.hgr.i18n.AppLanguage
 import com.seagori.hgr.i18n.AppLocale
+import com.seagori.hgr.ui.theme.AppTheme
+import com.seagori.hgr.ui.theme.AppThemePreset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.MouseInfo
+import java.awt.Point
 import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class DesktopScreen { HOME, RECORDS, GOALS, SETTINGS, SUGGESTION, CHECK, ARCHIVE }
+enum class DesktopScreen { HOME, DAILY, RECORDS, GOALS, SETTINGS, SUGGESTION, CHECK, ARCHIVE }
 
 class DesktopAppState(val settings: SettingsStore) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -99,6 +105,18 @@ class DesktopAppState(val settings: SettingsStore) {
     var coachKey by mutableStateOf("")
     var coachReasoning by mutableStateOf(settings.coachReasoningEffort)
     var language by mutableStateOf(settings.appLanguage)
+    var theme by mutableStateOf(settings.appTheme)
+    var reminderEnabled by mutableStateOf(settings.reminderEnabled)
+    var reminderCooldownMinutes by mutableStateOf(settings.reminderCooldownMinutes)
+    var reminderRetryMinutes by mutableStateOf(settings.reminderRetryMinutes)
+    var reminderDurationSeconds by mutableStateOf(settings.reminderDurationSeconds)
+    var reminderMessage by mutableStateOf(settings.reminderMessage)
+    var dailyReminderEnabled by mutableStateOf(settings.dailyReminderEnabled)
+    var dailyReminderCooldownMinutes by mutableStateOf(settings.dailyReminderCooldownMinutes)
+    var dailyReminderRetryMinutes by mutableStateOf(settings.dailyReminderRetryMinutes)
+    var dailyReminderDurationSeconds by mutableStateOf(settings.dailyReminderDurationSeconds)
+    var activeReminderText by mutableStateOf<String?>(null)
+        private set
     var testingProfile by mutableStateOf<LlmProfile?>(null)
         private set
     var testMessage by mutableStateOf<String?>(null)
@@ -1332,6 +1350,149 @@ class DesktopAppState(val settings: SettingsStore) {
 
     fun recordDate(createdAt: Long): String = synchronized(recordDateFormat) {
         recordDateFormat.format(Date(createdAt))
+    }
+
+    init {
+        scope.launch {
+            var lastPoint: Point? = currentPointerOrNull()
+            var lastActiveAt = System.currentTimeMillis()
+            var nextRegularRetryAt = 0L
+            var nextDailyRetryAt = 0L
+            while (isActive) {
+                delay(15_000L)
+                if (!reminderEnabled && !dailyReminderEnabled) {
+                    continue
+                }
+                val point = currentPointerOrNull()
+                val now = System.currentTimeMillis()
+                if (point != null && point != lastPoint) {
+                    lastPoint = point
+                    lastActiveAt = now
+                }
+                val userActive = (now - lastActiveAt) <= 120_000L
+                val cooldownMs = reminderCooldownMinutes.coerceAtLeast(1) * 60_000L
+                val lastShown = settings.lastReminderAt
+                if (reminderEnabled && now >= nextRegularRetryAt && (lastShown == 0L || now - lastShown >= cooldownMs)) {
+                    if (userActive) {
+                        settings.lastReminderAt = now
+                        nextRegularRetryAt = 0L
+                        val message = reminderMessage.trim().ifEmpty { strings.reminderDefaultText }
+                        activeReminderText = message
+                        delay(reminderDurationSeconds.coerceAtLeast(1) * 1_000L)
+                        if (activeReminderText == message) {
+                            activeReminderText = null
+                        }
+                    } else {
+                        nextRegularRetryAt = now + reminderRetryMinutes.coerceAtLeast(1) * 60_000L
+                    }
+                }
+                val dailyCooldownMs = dailyReminderCooldownMinutes.coerceAtLeast(1) * 60_000L
+                val lastDaily = settings.lastDailyReminderAt
+                val hasRemaining = data.dailyTasks.tasks.isNotEmpty() && data.dailyTasks.todayPercent() < 100
+                if (dailyReminderEnabled && hasRemaining && now >= nextDailyRetryAt && (lastDaily == 0L || now - lastDaily >= dailyCooldownMs)) {
+                    if (userActive) {
+                        settings.lastDailyReminderAt = now
+                        nextDailyRetryAt = 0L
+                        val message = strings.dailyReminderMessage
+                        activeReminderText = message
+                        delay(dailyReminderDurationSeconds.coerceAtLeast(1) * 1_000L)
+                        if (activeReminderText == message) {
+                            activeReminderText = null
+                        }
+                    } else {
+                        nextDailyRetryAt = now + dailyReminderRetryMinutes.coerceAtLeast(1) * 60_000L
+                    }
+                }
+            }
+        }
+    }
+
+    private fun currentPointerOrNull(): Point? =
+        runCatching { MouseInfo.getPointerInfo()?.location }.getOrNull()
+
+    fun updateReminderEnabled(enabled: Boolean) {
+        reminderEnabled = enabled
+        settings.reminderEnabled = enabled
+        if (!enabled) {
+            activeReminderText = null
+        } else {
+            settings.lastReminderAt = System.currentTimeMillis()
+        }
+    }
+
+    fun updateReminderCooldown(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        reminderCooldownMinutes = clamped
+        settings.reminderCooldownMinutes = clamped
+    }
+
+    fun updateReminderMessage(message: String) {
+        reminderMessage = message
+        settings.reminderMessage = message
+    }
+
+    fun updateDailyReminderEnabled(enabled: Boolean) {
+        dailyReminderEnabled = enabled
+        settings.dailyReminderEnabled = enabled
+        if (!enabled) {
+            if (activeReminderText == strings.dailyReminderMessage) {
+                activeReminderText = null
+            }
+        } else {
+            settings.lastDailyReminderAt = System.currentTimeMillis()
+        }
+    }
+
+    fun updateDailyReminderCooldown(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        dailyReminderCooldownMinutes = clamped
+        settings.dailyReminderCooldownMinutes = clamped
+    }
+
+    fun updateReminderRetry(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        reminderRetryMinutes = clamped
+        settings.reminderRetryMinutes = clamped
+    }
+
+    fun updateReminderDuration(seconds: Int) {
+        val clamped = seconds.coerceAtLeast(1)
+        reminderDurationSeconds = clamped
+        settings.reminderDurationSeconds = clamped
+    }
+
+    fun updateDailyReminderRetry(minutes: Int) {
+        val clamped = minutes.coerceAtLeast(1)
+        dailyReminderRetryMinutes = clamped
+        settings.dailyReminderRetryMinutes = clamped
+    }
+
+    fun updateDailyReminderDuration(seconds: Int) {
+        val clamped = seconds.coerceAtLeast(1)
+        dailyReminderDurationSeconds = clamped
+        settings.dailyReminderDurationSeconds = clamped
+    }
+
+    fun updateTheme(preset: AppThemePreset) {
+        theme = preset
+        settings.appTheme = preset
+        AppTheme.set(preset)
+    }
+
+    fun dismissReminder() {
+        activeReminderText = null
+    }
+
+    fun addDailyTask(title: String) {
+        update { it.copy(dailyTasks = it.dailyTasks.addTask(title)) }
+    }
+
+    fun toggleDailyTask(taskId: Long) {
+        update { it.copy(dailyTasks = it.dailyTasks.toggleTask(taskId)) }
+    }
+
+    fun deleteDailyTask(taskId: Long) {
+        update { it.copy(dailyTasks = it.dailyTasks.deleteTask(taskId)) }
     }
 
     fun dispose() {

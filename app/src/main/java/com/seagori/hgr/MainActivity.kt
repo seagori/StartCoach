@@ -19,6 +19,7 @@ import com.seagori.hgr.i18n.LocalStrings
 import com.seagori.hgr.shortcut.GoalShortcutHelper
 import com.seagori.hgr.ui.AppViewModelFactory
 import com.seagori.hgr.ui.navigation.AppNav
+import com.seagori.hgr.ui.theme.AppTheme
 import com.seagori.hgr.ui.theme.Bg
 import com.seagori.hgr.ui.theme.StartCoachTheme
 
@@ -35,23 +36,31 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         readTrigger(intent)
-        val repository = (application as StartCoachApplication).container.repository
-        val syncManager = (application as StartCoachApplication).container.syncManager
-        val factory = AppViewModelFactory(repository, syncManager)
+        val container = (application as StartCoachApplication).container
+        val repository = container.repository
+        val factory = AppViewModelFactory(
+            repository = repository,
+            syncManager = container.syncManager,
+            dailyTaskStore = container.dailyTaskStore,
+            settings = container.settings
+        )
         setContent {
             val language by AppLocale.language.collectAsStateWithLifecycle()
+            val themePreset by AppTheme.preset.collectAsStateWithLifecycle()
             val strings = remember(language) { AppLocale.stringsFor(language) }
             val pendingGoalId by triggerGoalId
             CompositionLocalProvider(LocalStrings provides strings) {
-                StartCoachTheme {
-                    Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
-                        AppNav(
-                            factory = factory,
-                            bootstrap = repository::bootstrap,
-                            triggerGoalId = pendingGoalId,
-                            onTriggerHandled = { triggerGoalId.value = null },
-                            onOpenGoalFromTrigger = repository::openGoalFromTrigger
-                        )
+                androidx.compose.runtime.key(themePreset) {
+                    StartCoachTheme {
+                        Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
+                            AppNav(
+                                factory = factory,
+                                bootstrap = repository::bootstrap,
+                                triggerGoalId = pendingGoalId,
+                                onTriggerHandled = { triggerGoalId.value = null },
+                                onOpenGoalFromTrigger = repository::openGoalFromTrigger
+                            )
+                        }
                     }
                 }
             }

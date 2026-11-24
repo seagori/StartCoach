@@ -1,6 +1,7 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -9,7 +10,7 @@ plugins {
 val licenseAssetsDir = layout.buildDirectory.dir("generated/licenseAssets").get().asFile
 
 /** 루트의 라이선스 문서를 앱 assets/licenses/ 로 모아 인앱 라이선스 화면에서 읽는다. */
-val syncLicenseAssets by tasks.registering(Sync::class) {
+val syncLicenseAssets = tasks.register<Sync>("syncLicenseAssets") {
     into(File(licenseAssetsDir, "licenses"))
     from(rootProject.file("LICENSE")) { rename { "GPL-3.0.txt" } }
     from(rootProject.file("NOTICE")) { rename { "NOTICE.txt" } }
@@ -19,14 +20,15 @@ val syncLicenseAssets by tasks.registering(Sync::class) {
 
 android {
     namespace = "com.seagori.hgr"
-    compileSdk = 35
+    compileSdk = 37
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "com.seagori.hgr"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = 2
+        versionName = "0.2.1"
     }
 
     buildTypes {
@@ -45,9 +47,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     buildFeatures {
         compose = true
@@ -99,4 +98,10 @@ tasks.matching {
         it.name.startsWith("lint")
 }.configureEach {
     dependsOn(syncLicenseAssets)
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }

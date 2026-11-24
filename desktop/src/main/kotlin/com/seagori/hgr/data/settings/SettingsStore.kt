@@ -4,6 +4,7 @@ import com.seagori.hgr.desktop.DesktopFileSecurity
 import com.seagori.hgr.domain.LlmProfile
 import com.seagori.hgr.domain.UrlRules
 import com.seagori.hgr.i18n.AppLanguage
+import com.seagori.hgr.ui.theme.AppThemePreset
 import java.io.File
 import java.security.SecureRandom
 import java.util.Base64
@@ -275,6 +276,54 @@ class SettingsStore(
         return SecretKeySpec(keyBytes, "AES")
     }
 
+    var reminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_REMINDER_ENABLED, false)
+        set(value) = prefs.putBoolean(KEY_REMINDER_ENABLED, value)
+
+    var reminderCooldownMinutes: Int
+        get() = prefs.getInt(KEY_REMINDER_COOLDOWN_MINUTES, DEFAULT_REMINDER_COOLDOWN_MINUTES).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_REMINDER_COOLDOWN_MINUTES, value.coerceAtLeast(1))
+
+    var reminderRetryMinutes: Int
+        get() = prefs.getInt(KEY_REMINDER_RETRY_MINUTES, DEFAULT_REMINDER_RETRY_MINUTES).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_REMINDER_RETRY_MINUTES, value.coerceAtLeast(1))
+
+    var reminderDurationSeconds: Int
+        get() = prefs.getInt(KEY_REMINDER_DURATION_SECONDS, DEFAULT_REMINDER_DURATION_SECONDS).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_REMINDER_DURATION_SECONDS, value.coerceAtLeast(1))
+
+    var reminderMessage: String
+        get() = prefs.get(KEY_REMINDER_MESSAGE, "")
+        set(value) = prefs.put(KEY_REMINDER_MESSAGE, value)
+
+    var lastReminderAt: Long
+        get() = prefs.getLong(KEY_LAST_REMINDER_AT, 0L)
+        set(value) = prefs.putLong(KEY_LAST_REMINDER_AT, value)
+
+    var dailyReminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DAILY_REMINDER_ENABLED, false)
+        set(value) = prefs.putBoolean(KEY_DAILY_REMINDER_ENABLED, value)
+
+    var dailyReminderCooldownMinutes: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_COOLDOWN_MINUTES, DEFAULT_REMINDER_COOLDOWN_MINUTES).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_DAILY_REMINDER_COOLDOWN_MINUTES, value.coerceAtLeast(1))
+
+    var dailyReminderRetryMinutes: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_RETRY_MINUTES, DEFAULT_REMINDER_RETRY_MINUTES).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_DAILY_REMINDER_RETRY_MINUTES, value.coerceAtLeast(1))
+
+    var dailyReminderDurationSeconds: Int
+        get() = prefs.getInt(KEY_DAILY_REMINDER_DURATION_SECONDS, DEFAULT_REMINDER_DURATION_SECONDS).coerceAtLeast(1)
+        set(value) = prefs.putInt(KEY_DAILY_REMINDER_DURATION_SECONDS, value.coerceAtLeast(1))
+
+    var lastDailyReminderAt: Long
+        get() = prefs.getLong(KEY_LAST_DAILY_REMINDER_AT, 0L)
+        set(value) = prefs.putLong(KEY_LAST_DAILY_REMINDER_AT, value)
+
+    var appTheme: AppThemePreset
+        get() = AppThemePreset.fromStored(prefs.get(KEY_APP_THEME, null))
+        set(value) = prefs.put(KEY_APP_THEME, value.name)
+
     /** 사용자가 값을 바꾼 경우. LWW 타임스탬프를 함께 올린다. */
     private fun putValue(key: String, value: String) {
         prefs.put(key, value)
@@ -283,6 +332,9 @@ class SettingsStore(
 
     companion object {
         const val DEFAULT_REASONING = "medium"
+        const val DEFAULT_REMINDER_COOLDOWN_MINUTES = 60
+        const val DEFAULT_REMINDER_RETRY_MINUTES = 15
+        const val DEFAULT_REMINDER_DURATION_SECONDS = 5
 
         private const val KEY_FAST_API = "fast_api_base_url"
         private const val KEY_FAST_MODEL = "fast_model_id"
@@ -296,6 +348,18 @@ class SettingsStore(
         private const val KEY_LANGUAGE = "app_language"
         private const val KEY_SYNC_DEVICE_ID = "sync_device_id"
         private const val KEY_SETTINGS_UPDATED_AT = "settings_updated_at"
+        private const val KEY_REMINDER_ENABLED = "reminder_enabled"
+        private const val KEY_REMINDER_COOLDOWN_MINUTES = "reminder_cooldown_minutes"
+        private const val KEY_REMINDER_RETRY_MINUTES = "reminder_retry_minutes"
+        private const val KEY_REMINDER_DURATION_SECONDS = "reminder_duration_seconds"
+        private const val KEY_REMINDER_MESSAGE = "reminder_message"
+        private const val KEY_LAST_REMINDER_AT = "last_reminder_at"
+        private const val KEY_DAILY_REMINDER_ENABLED = "daily_reminder_enabled"
+        private const val KEY_DAILY_REMINDER_COOLDOWN_MINUTES = "daily_reminder_cooldown_minutes"
+        private const val KEY_DAILY_REMINDER_RETRY_MINUTES = "daily_reminder_retry_minutes"
+        private const val KEY_DAILY_REMINDER_DURATION_SECONDS = "daily_reminder_duration_seconds"
+        private const val KEY_LAST_DAILY_REMINDER_AT = "last_daily_reminder_at"
+        private const val KEY_APP_THEME = "app_theme"
 
         private const val ENC_PREFIX = "enc:v1:"
         private const val AES_KEY_BYTES = 32

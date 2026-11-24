@@ -334,10 +334,15 @@ fun CheckScreen(
             ) {
                 SecondaryButton(strings.stop, modifier = Modifier.weight(1f), onClick = { viewModel.stop(onHome) })
                 Spacer(Modifier.width(10.dp))
-                PrimaryButton(strings.nextSuggestion, modifier = Modifier.weight(1.45f), onClick = {
-                    if (result == null) return@PrimaryButton
-                    viewModel.next(onNext)
-                })
+                PrimaryButton(
+                    strings.nextSuggestion,
+                    modifier = Modifier.weight(1.45f),
+                    enabled = result != null,
+                    onClick = {
+                        if (result == null) return@PrimaryButton
+                        viewModel.next(onNext)
+                    }
+                )
             }
         }
     }

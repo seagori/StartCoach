@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.window.WindowDraggableArea
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,6 +47,7 @@ import com.seagori.hgr.data.settings.SettingsStore
 import com.seagori.hgr.i18n.AppLocale
 import com.seagori.hgr.i18n.LocalStrings
 import com.seagori.hgr.ui.theme.AccentDeep
+import com.seagori.hgr.ui.theme.AppTheme
 import com.seagori.hgr.ui.theme.Bg
 import com.seagori.hgr.ui.theme.Card
 import com.seagori.hgr.ui.theme.Ink
@@ -56,6 +59,9 @@ import kotlinx.coroutines.delay
 import org.jetbrains.skia.Image
 import java.awt.Dimension
 import java.awt.GraphicsEnvironment
+import java.io.File
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 
 private fun loadAppIcon(): BitmapPainter? = runCatching {
     Thread.currentThread().contextClassLoader
@@ -63,12 +69,34 @@ private fun loadAppIcon(): BitmapPainter? = runCatching {
         ?.use { BitmapPainter(Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap()) }
 }.getOrNull()
 
+private fun acquireSingleInstanceLock(): FileChannel? = runCatching {
+    val dir = File(System.getProperty("user.home"), ".startcoach").apply { mkdirs() }
+    val channel = FileChannel.open(
+        File(dir, "desktop.lock").toPath(),
+        StandardOpenOption.CREATE,
+        StandardOpenOption.WRITE
+    )
+    if (channel.tryLock() == null) {
+        channel.close()
+        null
+    } else {
+        channel
+    }
+}.getOrNull()
+
 @OptIn(ExperimentalComposeUiApi::class)
-fun main() = application {
+fun main() {
+    val instanceLock = acquireSingleInstanceLock() ?: return
+    Runtime.getRuntime().addShutdownHook(Thread { runCatching { instanceLock.close() } })
+    application {
     System.setProperty("java.net.useSystemProxies", "true")
     val settings = remember { SettingsStore() }
-    remember { AppLocale.init(settings.appLanguage) }
+    remember {
+        AppLocale.init(settings.appLanguage)
+        AppTheme.init(settings.appTheme)
+    }
     val language by AppLocale.language.collectAsState()
+    val themePreset by AppTheme.preset.collectAsState()
     val strings = remember(language) { AppLocale.stringsFor(language) }
     val state = remember { DesktopAppState(settings) }
     val windowState = rememberWindowState(size = DpSize(390.dp, 644.dp))
@@ -132,29 +160,27 @@ fun main() = application {
             }
         }
         CompositionLocalProvider(LocalStrings provides strings) {
-            StartCoachTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
-                    DesktopApp(state)
+            androidx.compose.runtime.key(themePreset) {
+                StartCoachTheme {
+                    Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
+                        DesktopApp(state)
+                    }
                 }
             }
         }
     }
 
     if (state.miniBarEnabled) {
-        var hovered by remember { mutableStateOf(false) }
-        val barWidth = 420.dp
-        val barHeight = if (hovered) 142.dp else 44.dp
+        val barWidth = 340.dp
+        val barHeight = 52.dp
         val bounds = remember { GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds }
         val miniState = rememberWindowState(
             size = DpSize(barWidth, barHeight),
             position = WindowPosition(
-                x = (bounds.x + ((bounds.width - 420) / 2).coerceAtLeast(0)).dp,
-                y = (bounds.y + 4).dp
+                x = (bounds.x + ((bounds.width - 340) / 2).coerceAtLeast(0)).dp,
+                y = (bounds.y + 8).dp
             )
         )
-        LaunchedEffect(hovered) {
-            miniState.size = DpSize(barWidth, if (hovered) 142.dp else 44.dp)
-        }
         Window(
             onCloseRequest = { state.miniBarEnabled = false },
             state = miniState,
@@ -164,87 +190,69 @@ fun main() = application {
             resizable = false,
             focusable = false
         ) {
-            val latest = state.activeGoals.firstOrNull()
-            val cached = latest?.let { state.easiestCachedAction(it.id) }
-            val stepTitle = latest?.let { state.pathForGoal(it.id)?.current?.title }
-            val actionText = cached ?: stepTitle ?: latest?.title ?: strings.quickStartFallback
+            val daily = state.data.dailyTasks
+            val completedIds = daily.effectiveCompletedIds()
+            val percent = daily.todayPercent()
 
             CompositionLocalProvider(LocalStrings provides strings) {
-                StartCoachTheme {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Card.copy(alpha = 0.96f))
-                            .border(1.dp, Line, RoundedCornerShape(16.dp))
-                            .onPointerEvent(PointerEventType.Enter) { hovered = true }
-                            .onPointerEvent(PointerEventType.Exit) { hovered = false }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${strings.desktopMiniNext}$actionText",
-                                color = Ink,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                text = strings.desktopMiniStart,
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                androidx.compose.runtime.key(themePreset) {
+                    StartCoachTheme {
+                        WindowDraggableArea {
+                            Column(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(AccentDeep)
-                                    .clickable {
-                                        if (latest != null && (cached != null || stepTitle != null)) {
-                                            state.startQuickAction(latest.id, actionText)
-                                        } else if (latest != null) {
-                                            state.startGoal(latest.title)
-                                        }
-                                        windowState.isMinimized = false
-                                        windowVisible = true
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
-                            )
-                        }
-                        if (hovered) {
-                            Spacer(Modifier.height(10.dp))
-                            latest?.let {
-                                Text(
-                                    text = it.title,
-                                    color = Muted,
-                                    fontSize = 12.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Card.copy(alpha = 0.96f))
+                                    .border(1.dp, Line, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.Center
                             ) {
-                                Text(
-                                    text = strings.desktopTrayOpen,
-                                    color = AccentDeep,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = strings.dailyProgressLabel(completedIds.size, daily.tasks.size, percent),
+                                        color = Ink,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = "$percent%",
+                                        color = AccentDeep,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = strings.navDaily,
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(AccentDeep)
+                                            .clickable {
+                                                state.screen = DesktopScreen.DAILY
+                                                windowState.isMinimized = false
+                                                windowVisible = true
+                                            }
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                LinearProgressIndicator(
+                                    progress = { (percent / 100f).coerceIn(0f, 1f) },
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Soft)
-                                        .clickable {
-                                            windowState.isMinimized = false
-                                            windowVisible = true
-                                        }
-                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                        .fillMaxWidth()
+                                        .height(6.dp)
+                                        .clip(RoundedCornerShape(99.dp)),
+                                    color = AccentDeep,
+                                    trackColor = Soft
                                 )
                             }
                         }
@@ -253,4 +261,66 @@ fun main() = application {
             }
         }
     }
+
+    val reminderText = state.activeReminderText
+    if (reminderText != null) {
+        val maxBounds = remember {
+            GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds
+        }
+        val bannerWidth = 360.dp
+        val bannerState = rememberWindowState(
+            size = DpSize(bannerWidth, 68.dp),
+            position = WindowPosition(
+                x = (maxBounds.x + maxBounds.width - 360 - 16).coerceAtLeast(0).dp,
+                y = (maxBounds.y + maxBounds.height - 68 - 16).coerceAtLeast(0).dp
+            )
+        )
+        Window(
+            onCloseRequest = { state.dismissReminder() },
+            state = bannerState,
+            undecorated = true,
+            transparent = true,
+            alwaysOnTop = true,
+            resizable = false,
+            focusable = false
+        ) {
+            CompositionLocalProvider(LocalStrings provides strings) {
+                StartCoachTheme {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Card.copy(alpha = 0.98f))
+                            .border(1.dp, AccentDeep, RoundedCornerShape(16.dp))
+                            .clickable {
+                                state.dismissReminder()
+                                windowState.isMinimized = false
+                                windowVisible = true
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = strings.appName,
+                                color = AccentDeep,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = reminderText,
+                                color = Ink,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
@@ -33,6 +34,8 @@ import com.seagori.hgr.ui.goals.GoalsScreen
 import com.seagori.hgr.ui.goals.GoalsViewModel
 import com.seagori.hgr.ui.archive.ArchiveScreen
 import com.seagori.hgr.ui.archive.ArchiveViewModel
+import com.seagori.hgr.ui.daily.DailyTasksScreen
+import com.seagori.hgr.ui.daily.DailyTasksViewModel
 import com.seagori.hgr.ui.home.HomeScreen
 import com.seagori.hgr.ui.home.HomeViewModel
 import com.seagori.hgr.ui.records.RecordsScreen
@@ -50,6 +53,7 @@ import com.seagori.hgr.ui.theme.Muted
 
 object Routes {
     const val Home = "home"
+    const val Daily = "daily"
     const val Records = "records"
     const val Goals = "goals"
     const val Settings = "settings"
@@ -71,6 +75,7 @@ fun AppNav(
     val strings = LocalStrings.current
     val tabs = listOf(
         Tab(Routes.Home, strings.navHome, Icons.Outlined.Home),
+        Tab(Routes.Daily, strings.navDaily, Icons.Outlined.CheckCircle),
         Tab(Routes.Records, strings.navRecords, Icons.AutoMirrored.Outlined.MenuBook),
         Tab(Routes.Goals, strings.navGoals, Icons.Outlined.Flag),
         Tab(Routes.Settings, strings.navSettings, Icons.Outlined.Settings)
@@ -156,6 +161,10 @@ fun AppNav(
                     onStart = { navController.navigate(Routes.Suggestion) },
                     onQuickCheck = { navController.navigate(Routes.Check) }
                 )
+            }
+            composable(Routes.Daily) {
+                val vm: DailyTasksViewModel = viewModel(factory = factory)
+                DailyTasksScreen(vm)
             }
             composable(Routes.Records) {
                 val vm: RecordsViewModel = viewModel(factory = factory)

@@ -1,8 +1,12 @@
 package com.seagori.hgr.ui.settings
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -23,6 +28,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +45,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.seagori.hgr.domain.LlmProfile
 import com.seagori.hgr.i18n.AppLanguage
 import com.seagori.hgr.i18n.LocalStrings
-import com.seagori.hgr.quick.QuickStartTileService
 import com.seagori.hgr.sync.AndroidSyncUi
 import com.seagori.hgr.sync.DiscoveredServer
 import com.seagori.hgr.sync.SyncCrypto
@@ -51,6 +57,7 @@ import com.seagori.hgr.ui.components.ScreenHeader
 import com.seagori.hgr.ui.components.SecondaryButton
 import com.seagori.hgr.ui.components.card
 import com.seagori.hgr.ui.theme.AccentDeep
+import com.seagori.hgr.ui.theme.AppThemePreset
 import com.seagori.hgr.ui.theme.Card
 import com.seagori.hgr.ui.theme.Ink
 import com.seagori.hgr.ui.theme.Line
@@ -68,8 +75,13 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val sync by viewModel.syncUi.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showLicenses by remember { mutableStateOf(false) }
-    val licenseText = remember(showLicenses) {
-        if (showLicenses) loadLicenseText(context) else ""
+    var licenseSections by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    LaunchedEffect(showLicenses) {
+        if (showLicenses && licenseSections.isEmpty()) {
+            licenseSections = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                loadLicenseSections(context)
+            }
+        }
     }
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -100,6 +112,22 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         AppLanguage.CHINESE_SIMPLIFIED -> strings.languageChineseSimplified
                         AppLanguage.CHINESE_TRADITIONAL -> strings.languageChineseTraditional
                         AppLanguage.ENGLISH -> strings.languageEnglish
+                    }
+                )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(strings.themeSection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppThemePreset.entries.forEach { preset ->
+                AppFilterChip(
+                    selected = ui.theme == preset,
+                    onClick = { viewModel.onThemeChange(context, preset) },
+                    label = when (preset) {
+                        AppThemePreset.SAGE -> strings.themeSage
+                        AppThemePreset.BLUE -> strings.themeBlue
+                        AppThemePreset.DARK -> strings.themeDark
                     }
                 )
             }
@@ -176,20 +204,42 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         Spacer(Modifier.height(12.dp))
         SecondaryButton(strings.clearAllRecords, onClick = viewModel::clearData)
         Spacer(Modifier.height(28.dp))
-        var tileEnabled by remember { mutableStateOf(QuickStartTileService.isTileEnabled(context)) }
-        Text(strings.quickTileSection, fontWeight = FontWeight.Bold, color = Ink)
+        var pendingPermissionTarget by remember { mutableStateOf<String?>(null) }
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) {
+                when (pendingPermissionTarget) {
+                    "regular" -> viewModel.onReminderEnabledChange(context, true)
+                    "daily" -> viewModel.onDailyReminderEnabledChange(context, true)
+                    "pinned" -> viewModel.onPinnedDailyEnabledChange(context, true)
+                }
+            }
+            pendingPermissionTarget = null
+        }
+        Text(strings.reminderSection, fontWeight = FontWeight.Bold, color = Ink)
         Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(strings.quickTileToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Text(strings.reminderToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Switch(
-                checked = tileEnabled,
+                checked = ui.reminderEnabled,
                 onCheckedChange = { enabled ->
-                    tileEnabled = enabled
-                    QuickStartTileService.setTileEnabled(context, enabled)
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            pendingPermissionTarget = "regular"
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            return@Switch
+                        }
+                    }
+                    viewModel.onReminderEnabledChange(context, enabled)
                 },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Card,
@@ -197,11 +247,138 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 )
             )
         }
-        if (tileEnabled && QuickStartTileService.canRequestAddTile()) {
-            Spacer(Modifier.height(8.dp))
-            SecondaryButton(strings.quickTileAdd) {
-                QuickStartTileService.requestAddTile(context)
-            }
+        if (ui.reminderEnabled) {
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderRetryLabel,
+                value = ui.reminderRetryMinutes,
+                presets = listOf(10, 15, 30),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onReminderRetryChange(context, it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderCooldown,
+                value = ui.reminderCooldownMinutes,
+                presets = listOf(60, 120, 180),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onReminderCooldownChange(context, it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderDurationLabel,
+                value = ui.reminderDurationSeconds,
+                presets = listOf(5, 15, 30),
+                unitLabel = strings::secondsShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onReminderDurationChange(context, it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = ui.reminderMessage,
+                onValueChange = { viewModel.onReminderMessageChange(context, it) },
+                label = { Text(strings.reminderMessageLabel) },
+                placeholder = { Text(strings.reminderDefaultText) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(strings.reminderAutoDismissNote, color = Muted, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(24.dp))
+        Text(strings.dailyReminderSection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(strings.dailyReminderToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Switch(
+                checked = ui.dailyReminderEnabled,
+                onCheckedChange = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            pendingPermissionTarget = "daily"
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            return@Switch
+                        }
+                    }
+                    viewModel.onDailyReminderEnabledChange(context, enabled)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Card,
+                    checkedTrackColor = AccentDeep
+                )
+            )
+        }
+        if (ui.dailyReminderEnabled) {
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderRetryLabel,
+                value = ui.dailyReminderRetryMinutes,
+                presets = listOf(10, 15, 30),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onDailyReminderRetryChange(context, it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderCooldown,
+                value = ui.dailyReminderCooldownMinutes,
+                presets = listOf(60, 120, 180),
+                unitLabel = strings::minutesShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onDailyReminderCooldownChange(context, it) }
+            )
+            Spacer(Modifier.height(10.dp))
+            IntervalSelector(
+                label = strings.reminderDurationLabel,
+                value = ui.dailyReminderDurationSeconds,
+                presets = listOf(5, 15, 30),
+                unitLabel = strings::secondsShort,
+                customLabel = strings.customOption,
+                onSelect = { viewModel.onDailyReminderDurationChange(context, it) }
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("${strings.dailyReminderMessage} · ${strings.reminderAutoDismissNote}", color = Muted, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(28.dp))
+        Text(strings.pinnedDailySection, fontWeight = FontWeight.Bold, color = Ink)
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(strings.pinnedDailyToggle, color = Ink, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Switch(
+                checked = ui.pinnedDailyEnabled,
+                onCheckedChange = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (!granted) {
+                            pendingPermissionTarget = "pinned"
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            return@Switch
+                        }
+                    }
+                    viewModel.onPinnedDailyEnabledChange(context, enabled)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Card,
+                    checkedTrackColor = AccentDeep
+                )
+            )
         }
         Spacer(Modifier.height(28.dp))
         Text(strings.licenseSection, fontWeight = FontWeight.Bold, color = Ink)
@@ -209,10 +386,10 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         SecondaryButton(strings.licenseInfo) { showLicenses = true }
     }
 
-    if (showLicenses) {
+    if (showLicenses && licenseSections.isNotEmpty()) {
         LicenseDialog(
             title = strings.licenseInfo,
-            text = licenseText,
+            sections = licenseSections,
             closeLabel = strings.close,
             onDismiss = { showLicenses = false }
         )
@@ -602,17 +779,112 @@ private fun ProfileEditor(
 }
 
 private val LICENSE_FILES = listOf(
-    "licenses/NOTICE.txt",
-    "licenses/GPL-3.0.txt",
-    "licenses/CC-BY-SA-4.0.txt",
-    "licenses/THIRD_PARTY_NOTICES.txt",
-    "licenses/Apache-2.0.txt",
-    "licenses/Bouncy-Castle.txt"
+    "NOTICE" to "licenses/NOTICE.txt",
+    "GPL-3.0" to "licenses/GPL-3.0.txt",
+    "CC-BY-SA-4.0" to "licenses/CC-BY-SA-4.0.txt",
+    "Third-Party" to "licenses/THIRD_PARTY_NOTICES.txt",
+    "Apache-2.0" to "licenses/Apache-2.0.txt",
+    "Bouncy Castle" to "licenses/Bouncy-Castle.txt"
 )
 
-private fun loadLicenseText(context: Context): String =
-    LICENSE_FILES.joinToString(separator = "\n\n" + "-".repeat(72) + "\n\n") { path ->
-        runCatching {
+private fun loadLicenseSections(context: Context): List<Pair<String, String>> =
+    LICENSE_FILES.map { (label, path) ->
+        val body = runCatching {
             context.assets.open(path).bufferedReader().use { it.readText() }
         }.getOrElse { path }
+        label to body
     }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun IntervalSelector(
+    label: String,
+    value: Int,
+    presets: List<Int>,
+    unitLabel: (Int) -> String,
+    customLabel: String,
+    onSelect: (Int) -> Unit
+) {
+    val strings = LocalStrings.current
+    var showCustomDialog by remember { mutableStateOf(false) }
+    var customInput by remember(value) { mutableStateOf(value.toString()) }
+    val isCustom = value !in presets
+
+    Text(label, color = Muted, fontSize = 13.sp)
+    Spacer(Modifier.height(6.dp))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        presets.forEach { preset ->
+            AppFilterChip(
+                selected = value == preset,
+                onClick = { onSelect(preset) },
+                label = unitLabel(preset)
+            )
+        }
+        AppFilterChip(
+            selected = isCustom,
+            onClick = {
+                customInput = value.toString()
+                showCustomDialog = true
+            },
+            label = if (isCustom) "$customLabel (${unitLabel(value)})" else customLabel
+        )
+    }
+
+    if (showCustomDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomDialog = false },
+            containerColor = Card,
+            titleContentColor = Ink,
+            textContentColor = Ink,
+            tonalElevation = 0.dp,
+            title = { Text(label) },
+            text = {
+                val currentNum = (customInput.toIntOrNull() ?: value).coerceAtLeast(1)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = customInput,
+                        onValueChange = { next -> customInput = next.filter { it.isDigit() }.take(4) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { customInput = (currentNum - 5).coerceAtLeast(1).toString() }) {
+                            Text("-5", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { customInput = (currentNum - 1).coerceAtLeast(1).toString() }) {
+                            Text("-1", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        Text(unitLabel(currentNum), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        TextButton(onClick = { customInput = (currentNum + 1).coerceAtMost(9999).toString() }) {
+                            Text("+1", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { customInput = (currentNum + 5).coerceAtMost(9999).toString() }) {
+                            Text("+5", color = AccentDeep, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val parsed = customInput.toIntOrNull()
+                    if (parsed != null && parsed >= 1) {
+                        onSelect(parsed)
+                    }
+                    showCustomDialog = false
+                }) {
+                    Text(strings.save)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDialog = false }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+}

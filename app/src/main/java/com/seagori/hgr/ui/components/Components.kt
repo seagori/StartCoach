@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +35,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -325,30 +332,64 @@ fun OptionList(content: @Composable () -> Unit) {
 }
 
 /** 라이선스 전문을 스크롤·선택 가능한 다이얼로그로 보여준다. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LicenseDialog(
     title: String,
-    text: String,
+    sections: List<Pair<String, String>>,
     closeLabel: String,
     onDismiss: () -> Unit
 ) {
+    var selectedIndex by remember(sections) { mutableStateOf(0) }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(selectedIndex) {
+        scrollState.scrollTo(0)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        containerColor = Card,
+        titleContentColor = Ink,
+        textContentColor = Ink,
+        tonalElevation = 0.dp,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
-            SelectionContainer {
-                Text(
-                    text = text,
-                    fontSize = 11.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState())
-                )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (sections.size > 1) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        sections.forEachIndexed { idx, (label, _) ->
+                            AppFilterChip(
+                                selected = selectedIndex == idx,
+                                onClick = { selectedIndex = idx },
+                                label = label
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+                val body = sections.getOrNull(selectedIndex)?.second.orEmpty()
+                SelectionContainer {
+                    Text(
+                        text = body,
+                        fontSize = 12.5.sp,
+                        lineHeight = 19.sp,
+                        color = Ink,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 380.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Soft)
+                            .verticalScroll(scrollState)
+                            .padding(14.dp)
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(closeLabel) }
+            TextButton(onClick = onDismiss) { Text(closeLabel, color = AccentDeep) }
         }
     )
 }

@@ -54,7 +54,7 @@ interface LearningPathDao {
     suspend fun delete(path: LearningPathEntity)
 
     @Query("DELETE FROM learning_paths WHERE goalId = :goalId")
-    suspend fun deleteByGoal(goalId: Long)
+    suspend fun deleteByGoal(goalId: Long): Int
 }
 
 @Dao
@@ -100,8 +100,8 @@ interface LearningStepDao {
     suspend fun update(step: LearningStepEntity)
 
     @Query("DELETE FROM learning_steps WHERE pathId = :pathId")
-    suspend fun deleteForPath(pathId: Long)
+    suspend fun deleteForPath(pathId: Long): Int
 
     @Query("DELETE FROM learning_steps WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 }
